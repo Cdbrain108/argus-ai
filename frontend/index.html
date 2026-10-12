@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0e1a" />
+    <link rel="icon" href="/argus-logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" />
+    <title>Argus | Automated EDA</title>
+    <script>
+      // Set dynamic viewport units on mobile so full-height layouts
+      // never leave a blank gap when the browser URL bar collapses on scroll.
+      (function () {
+        function setVh() {
+          var vh = window.innerHeight;
+          var iw = window.innerWidth;
+          document.documentElement.style.setProperty('--vh', (vh * 0.01) + 'px');
+          if (window.visualViewport) {
+            document.documentElement.style.setProperty('--dvh', (window.visualViewport.height * 0.01) + 'px');
+            document.documentElement.style.setProperty('--lvh', (window.visualViewport.height * 0.01) + 'px');
+          } else {
+            document.documentElement.style.setProperty('--dvh', (vh * 0.01) + 'px');
+            document.documentElement.style.setProperty('--lvh', (vh * 0.01) + 'px');
+          }
+          document.documentElement.style.setProperty('--dvw', (iw * 0.01) + 'px');
+          document.documentElement.style.setProperty('--svw', (iw * 0.01) + 'px');
+          document.documentElement.style.setProperty('--lvw', (iw * 0.01) + 'px');
+        }
+        setVh();
+        window.addEventListener('resize', setVh);
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', setVh);
+          window.visualViewport.addEventListener('scroll', setVh);
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

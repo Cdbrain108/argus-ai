@@ -1,0 +1,69 @@
+# ── Python / Caches ──────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pytest_cache/
+.pytest_cache/
+.ruff_cache/
+
+# ── Dependencies & Builds ───────────────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+build/
+
+# ── Credentials & Secrets ───────────────────────────────────────────────────
+.env
+*.env
+.env.*
+api_keys.txt
+.api_keys.txt
+api_keys.txt.txt
+API_KEYS_MASTER.md
+secrets.toml
+passwords.txt
+users.json
+.streamlit/
+
+# ── Local Scratch, Test Scripts & Verification ─────────────────────────────
+scratch/
+import_trace.txt
+*.log
+cdrain.txt
+PROVIDER_LATENCY_REPORT.md
+provider_latency_test.py
+provider_test_results.json
+models_*.json
+unified_llm_client.py
+verify_*.py
+verify_*.js
+inspect_metrics.js
+take_screenshot.ps1
+chats.txt
+instructions/chats.txt
+
+# ── Temporary Verification Screenshots & Dumps ─────────────────────────────
+verified_*.png
+section_*.png
+mobile_*.png
+intro_animation_*.png
+existing_argus/
+.github_reference/
+work_completed/
+argus_overview.html
+requirements-legacy.txt
+
+# ── Output documents ───────────────────────────────────────────────────────
+*.pdf
+.claude/
+.kilo/
+claude*.cmd
+
+# ── Internal Specs & Scratch Docs ──────────────────────────────────────────
+instructions/
+ARGUS_Complete_Project_Summary.txt
+ARGUS_Workflow_Diagram.html
+glimpse_logo.png
+img1.jpg
+

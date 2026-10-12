@@ -1,0 +1,32 @@
+# Runtime dependencies for the merged Argus app (FastAPI backend + React frontend).
+# Verified against the imports under backend/ — nothing here is Streamlit-only.
+
+# Web layer
+fastapi
+uvicorn
+python-multipart
+pydantic>=2.0
+
+# Authentication routes (imported by the API even for anonymous analysis)
+PyJWT
+pymongo
+
+# Data + analysis
+pandas
+numpy
+openpyxl          # pandas reads .xlsx/.xlsm through this
+xlrd              # pandas reads legacy .xls workbooks through this
+pyarrow           # pandas reads/writes Parquet datasets through this
+scikit-learn
+scipy
+matplotlib        # report charts and the PDF backend
+
+# LLM & Multi-Agent Framework (LangGraph + OpenAI-compatible providers)
+langgraph
+openai
+python-dotenv
+
+# The legacy Streamlit UI (app.py, auth.py, home.py, utils.py) and the original
+# analysis modules under existing_argus/ are kept as design/logic reference only.
+# Nothing under backend/ imports them, so they are not installed by default.
+# To run the old Streamlit app, install requirements-legacy.txt as well.

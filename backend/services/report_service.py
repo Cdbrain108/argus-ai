@@ -1,0 +1,554 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+import tempfile
+from pathlib import Path
+import uuid
+import numpy as np
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+
+from backend.reports.generator import build_report_payload
+
+_STORE: dict[str, dict] = {}
+_REPORT_DIR = Path(tempfile.gettempdir()) / "argus-reports"
+_REPORT_DIR.mkdir(parents=True, exist_ok=True)
+
+# Theme color constants matching the GitHub version & dark obsidian spec
+BG_COLOR = "#0D1117"
+CARD_COLOR = "#161B22"
+BORDER_COLOR = "#30363D"
+TEXT_COLOR = "#FFFFFF"
+TEXT_MUTED = "#8B949E"
+ORANGE = "#F97316"
+CYAN = "#38BDF8"
+PURPLE = "#7F77DD"
+GREEN = "#238636"
+RED = "#DA3633"
+
+
+def _setup_fig(figsize=(8.27, 11.69)):
+    fig = plt.figure(figsize=figsize, facecolor=BG_COLOR)
+    return fig
+
+
+def _draw_header(fig, title: str, subtitle: str = ""):
+    fig.text(0.08, 0.95, "ARGUS", fontsize=10, weight="black", color=ORANGE)
+    fig.text(0.08, 0.92, title, fontsize=18, weight="bold", color=TEXT_COLOR)
+    if subtitle:
+        fig.text(0.08, 0.895, subtitle, fontsize=10, color=TEXT_MUTED)
+    # Header divider
+    ax_line = fig.add_axes([0.08, 0.88, 0.84, 0.002])
+    ax_line.set_facecolor(BORDER_COLOR)
+    ax_line.axis("off")
+
+
+def _draw_footer(fig, page_num: int):
+    fig.text(0.08, 0.03, "ARGUS — Automated AI Data Analyst", fontsize=8, color=TEXT_MUTED)
+    fig.text(0.88, 0.03, f"Page {page_num}", fontsize=8, color=TEXT_MUTED, ha="right")
+
+
+def _page_cover(pdf: PdfPages, filename: str, health: dict, eda: dict):
+    fig = _setup_fig()
+    
+    # Hero brand
+    fig.text(0.5, 0.82, "ARGUS", fontsize=38, weight="black", color=ORANGE, ha="center")
+    fig.text(0.5, 0.77, "AI-POWERED AUTOMATED DATA ANALYSIS REPORT", fontsize=12, weight="bold", color=TEXT_COLOR, ha="center")
+    fig.text(0.5, 0.74, "Comprehensive exploratory findings, health assessment, and predictive insights", fontsize=10, color=TEXT_MUTED, ha="center")
+    
+    # Dataset Metadata Card
+    ax_card = fig.add_axes([0.15, 0.48, 0.70, 0.22])
+    ax_card.set_facecolor(CARD_COLOR)
+    for spine in ax_card.spines.values():
+        spine.set_color(BORDER_COLOR)
+        spine.set_linewidth(1.5)
+    ax_card.set_xticks([])
+    ax_card.set_yticks([])
+    
+    score = health.get("health_score", 100)
+    score_color = GREEN if score >= 80 else (ORANGE if score >= 60 else RED)
+    
+    ax_card.text(0.5, 0.85, f"Dataset: {filename}", fontsize=14, weight="bold", color=TEXT_COLOR, ha="center")
+    ax_card.text(0.5, 0.72, f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}", fontsize=9, color=TEXT_MUTED, ha="center")
+    
+    rows = eda.get("shape", [0, 0])[0] if isinstance(eda.get("shape"), list) else eda.get("n_rows", "—")
+    cols = eda.get("shape", [0, 0])[1] if isinstance(eda.get("shape"), list) else eda.get("n_cols", "—")
+    
+    ax_card.text(0.20, 0.45, "ROWS", fontsize=9, weight="bold", color=TEXT_MUTED, ha="center")
+    ax_card.text(0.20, 0.25, f"{rows:,}" if isinstance(rows, int) else str(rows), fontsize=18, weight="bold", color=TEXT_COLOR, ha="center")
+    
+    ax_card.text(0.50, 0.45, "COLUMNS", fontsize=9, weight="bold", color=TEXT_MUTED, ha="center")
+    ax_card.text(0.50, 0.25, str(cols), fontsize=18, weight="bold", color=TEXT_COLOR, ha="center")
+    
+    ax_card.text(0.80, 0.45, "HEALTH SCORE", fontsize=9, weight="bold", color=TEXT_MUTED, ha="center")
+    ax_card.text(0.80, 0.25, f"{score}/100", fontsize=18, weight="bold", color=score_color, ha="center")
+    
+    # Penalty breakdown
+    ax_card.text(0.5, 0.08, f"Penalties: Missing (-{health.get('missing_penalty', 0)}) · Duplicates (-{health.get('duplicate_penalty', 0)}) · Outliers (-{health.get('outlier_penalty', 0)})", fontsize=8.5, color=TEXT_MUTED, ha="center")
+
+    # Table of contents / summary
+    fig.text(0.15, 0.40, "Report Structure & Table of Contents", fontsize=12, weight="bold", color=TEXT_COLOR)
+    
+    sections = [
+        ("1. Dataset Overview & Health Profile", "Dimensions, column types, completeness, and hygiene scoring"),
+        ("2. Smart Data Cleaning Audit", "Missing values, duplicate detection, and automated cleaning plan"),
+        ("3. Univariate Distributions", "Per-column statistics, histograms, central tendencies, and spread"),
+        ("4. Bivariate Relationships & Correlation", "Key column interactions, correlation matrix, and linear trends"),
+        ("5. Feature Discovery & Predictive Ranking", "Automated target detection and predictive feature importance"),
+        ("6. AI Analyst Session Insights & Methodology", "Grounding notes, executive insights, and analysis warnings"),
+    ]
+    
+    y = 0.35
+    for title, desc in sections:
+        fig.text(0.15, y, title, fontsize=10, weight="bold", color=ORANGE)
+        fig.text(0.15, y - 0.022, desc, fontsize=8.5, color=TEXT_MUTED)
+        y -= 0.05
+        
+    _draw_footer(fig, 1)
+    pdf.savefig(fig, facecolor=BG_COLOR, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _page_health_and_cleaning(pdf: PdfPages, health: dict, cleaning: dict, eda: dict):
+    fig = _setup_fig()
+    _draw_header(fig, "1. Dataset Health & Data Cleaning Audit", "Comprehensive quality assessment and automated remediation")
+    
+    # Missing Values Bar Chart
+    ax_bar = fig.add_axes([0.10, 0.58, 0.80, 0.26])
+    ax_bar.set_facecolor(CARD_COLOR)
+    for spine in ax_bar.spines.values():
+        spine.set_color(BORDER_COLOR)
+    ax_bar.tick_params(colors=TEXT_MUTED, labelsize=8)
+    
+    missing_map = eda.get("missing_pct_per_col", {}) or {}
+    if missing_map:
+        sorted_missing = sorted(missing_map.items(), key=lambda x: x[1], reverse=True)[:10]
+        cols = [k for k, _ in sorted_missing]
+        pcts = [v for _, v in sorted_missing]
+        bars = ax_bar.barh(cols[::-1], pcts[::-1], color=ORANGE, edgecolor="none", height=0.6)
+        ax_bar.set_xlabel("Missing Percentage (%)", color=TEXT_MUTED, fontsize=9)
+        ax_bar.set_title("Top Columns with Missing Values", color=TEXT_COLOR, fontsize=11, weight="bold", pad=8)
+        for bar in bars:
+            w = bar.get_width()
+            if w > 0:
+                ax_bar.text(w + 0.5, bar.get_y() + bar.get_height() / 2, f"{w:.1f}%", va="center", color=TEXT_COLOR, fontsize=8)
+    else:
+        ax_bar.text(0.5, 0.5, "No missing values detected across dataset", color=GREEN, fontsize=12, ha="center", weight="bold")
+    
+    # Cleaning Findings Box
+    ax_clean = fig.add_axes([0.10, 0.10, 0.80, 0.42])
+    ax_clean.set_facecolor(CARD_COLOR)
+    for spine in ax_clean.spines.values():
+        spine.set_color(BORDER_COLOR)
+    ax_clean.set_xticks([])
+    ax_clean.set_yticks([])
+    
+    ax_clean.text(0.04, 0.92, "Data Cleaning Findings & Recommended Actions", fontsize=12, weight="bold", color=TEXT_COLOR)
+    
+    raw_issues = cleaning.get("issues", {}) or {}
+    issue_lines = []
+    if isinstance(raw_issues, dict):
+        miss = len(raw_issues.get("missing_values", []))
+        if miss > 0:
+            issue_lines.append(f"Missing Values: {miss} columns contain null or empty values.")
+        junk = len(raw_issues.get("junk_values", []))
+        if junk > 0:
+            issue_lines.append(f"Junk/Placeholder Data: {junk} columns contain placeholder strings.")
+        dups = raw_issues.get("duplicates", 0)
+        if dups > 0:
+            issue_lines.append(f"Duplicate Rows: {dups} identical row records detected.")
+        outliers = len(raw_issues.get("outliers", []))
+        if outliers > 0:
+            issue_lines.append(f"Outlier Anomalies: {outliers} columns have values beyond 1.5x IQR.")
+    elif isinstance(raw_issues, list):
+        issue_lines = [str(x) for x in raw_issues]
+    if not issue_lines:
+        issue_lines = ["No critical structural errors found.", "Data types correctly inferred.", "No duplicate rows present."]
+    
+    y = 0.82
+    for issue in issue_lines[:4]:
+        ax_clean.text(0.04, y, f"• {issue}", fontsize=9, color=TEXT_MUTED)
+        y -= 0.08
+        
+    ops = cleaning.get("operations", []) or []
+    ax_clean.text(0.04, 0.46, "Automated Remediation Operations:", fontsize=10, weight="bold", color=CYAN)
+    
+    if ops:
+        y = 0.38
+        for op in ops[:4]:
+            ax_clean.text(0.04, y, f"✓ {op}", fontsize=8.5, color=TEXT_COLOR)
+            y -= 0.07
+    else:
+        ax_clean.text(0.04, 0.36, "Dataset is well-formed. Default imputation strategies available upon demand.", fontsize=8.5, color=TEXT_MUTED)
+        
+    b_after = cleaning.get("before_after", {})
+    if b_after:
+        summary_text = (
+            f"Original Rows: {b_after.get('original_rows', '—')} → Cleaned Rows: {b_after.get('cleaned_rows', '—')}  |  "
+            f"Missing Values: {b_after.get('original_missing', 0)} → {b_after.get('cleaned_missing', 0)}"
+        )
+        ax_clean.text(0.04, 0.08, summary_text, fontsize=8.5, weight="bold", color=GREEN)
+    
+    _draw_footer(fig, 2)
+    pdf.savefig(fig, facecolor=BG_COLOR, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _page_univariate(pdf: PdfPages, univariate: dict):
+    fig = _setup_fig()
+    _draw_header(fig, "2. Univariate Distributions & Statistics", "Individual feature analysis, shape, central tendency, and outlier counts")
+    
+    # Any column that produced a chart is eligible, ranked so the four slots go
+    # to the most informative distributions first. The old gate accepted only
+    # "continuous"/"discrete_numeric", so a dataset of dates, booleans and text
+    # — every one of which now carries a chart — fell through to the unranked
+    # fallback and often printed "Summary Available" four times.
+    priority = {
+        "continuous": 0, "discrete_numeric": 0, "datetime": 1, "boolean": 2,
+        "categorical_low": 3, "categorical_high": 3, "text": 4,
+    }
+    numeric_items = [
+        (col, data) for col, data in univariate.items()
+        if (data.get("chart") or {}).get("values")
+    ]
+    # Stable, so columns of equal priority stay in file order.
+    numeric_items.sort(key=lambda item: priority.get(item[1].get("type"), 5))
+    numeric_items = numeric_items[:4]
+
+    if not numeric_items:
+        # Fallback for datasets with categorical-only or few items
+        numeric_items = list(univariate.items())[:4]
+        
+    positions = [
+        [0.10, 0.53, 0.38, 0.30],
+        [0.54, 0.53, 0.38, 0.30],
+        [0.10, 0.12, 0.38, 0.30],
+        [0.54, 0.12, 0.38, 0.30],
+    ]
+    
+    for idx, (col, data) in enumerate(numeric_items):
+        if idx >= len(positions):
+            break
+        pos = positions[idx]
+        ax = fig.add_axes(pos)
+        ax.set_facecolor(CARD_COLOR)
+        for spine in ax.spines.values():
+            spine.set_color(BORDER_COLOR)
+        ax.tick_params(colors=TEXT_MUTED, labelsize=7)
+        
+        chart = data.get("chart", {})
+        c_type = chart.get("type")
+        
+        if c_type == "histogram" and chart.get("values"):
+            values = chart.get("values", [])
+            labels = chart.get("labels", [])
+            x_pos = np.arange(len(values))
+            ax.bar(x_pos, values, color=ORANGE, edgecolor=CARD_COLOR, width=0.85, alpha=0.9)
+            if len(labels) > 0:
+                step = max(1, len(labels) // 4)
+                ax.set_xticks(x_pos[::step])
+                ax.set_xticklabels([str(labels[i]) for i in range(0, len(labels), step)], rotation=20)
+        elif c_type == "bar" and chart.get("values"):
+            values = chart.get("values", [])[:6]
+            labels = chart.get("labels", [])[:6]
+            ax.bar(labels, values, color=CYAN, edgecolor=CARD_COLOR, width=0.7)
+            ax.set_xticklabels(labels, rotation=25)
+        elif c_type == "line" and chart.get("values"):
+            # Datetime columns: record counts per bucket, so the report shows the
+            # same trend the workspace does instead of "Summary Available".
+            values = chart.get("values", [])
+            labels = chart.get("labels", [])
+            x_pos = np.arange(len(values))
+            ax.plot(x_pos, values, color=CYAN, linewidth=1.6)
+            ax.fill_between(x_pos, values, color=CYAN, alpha=0.18)
+            if len(labels) > 0:
+                step = max(1, len(labels) // 4)
+                ax.set_xticks(x_pos[::step])
+                ax.set_xticklabels([str(labels[i]) for i in range(0, len(labels), step)], rotation=20)
+        else:
+            ax.text(0.5, 0.5, "Summary Available", color=TEXT_MUTED, ha="center")
+            
+        ax.set_title(col, fontsize=10, weight="bold", color=TEXT_COLOR, pad=5)
+        
+        # Overlay key metrics in corner of axes
+        mean_val = data.get("mean")
+        med_val = data.get("median")
+        skew_val = data.get("skew")
+        outliers = data.get("outliers", 0)
+        
+        stats_line = []
+        if mean_val is not None:
+            stats_line.append(f"Mean: {mean_val}")
+        if med_val is not None:
+            stats_line.append(f"Med: {med_val}")
+        if skew_val is not None:
+            stats_line.append(f"Skew: {skew_val}")
+        if outliers:
+            stats_line.append(f"Outliers: {outliers}")
+            
+        stats_str = " | ".join(stats_line)
+        ax.set_xlabel(stats_str, fontsize=6.5, color=TEXT_MUTED)
+
+    _draw_footer(fig, 3)
+    pdf.savefig(fig, facecolor=BG_COLOR, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _page_correlation(pdf: PdfPages, corr_data: dict):
+    fig = _setup_fig()
+    _draw_header(fig, "3. Correlation Analysis & Linear Relationships", "Pearson correlation matrix and strongest predictive pairs")
+    
+    matrix = corr_data.get("matrix", {})
+    matrix_cols = corr_data.get("matrix_columns", [])[:8]
+    
+    if matrix_cols and matrix:
+        ax_mat = fig.add_axes([0.15, 0.44, 0.70, 0.40])
+        ax_mat.set_facecolor(CARD_COLOR)
+        
+        grid = []
+        for r in matrix_cols:
+            row = []
+            for c in matrix_cols:
+                row.append(matrix.get(r, {}).get(c, 0.0))
+            grid.append(row)
+        grid_arr = np.array(grid)
+        
+        im = ax_mat.imshow(grid_arr, cmap="coolwarm", vmin=-1, vmax=1)
+        ax_mat.set_xticks(range(len(matrix_cols)))
+        ax_mat.set_yticks(range(len(matrix_cols)))
+        ax_mat.set_xticklabels(matrix_cols, rotation=35, ha="right", color=TEXT_COLOR, fontsize=8)
+        ax_mat.set_yticklabels(matrix_cols, color=TEXT_COLOR, fontsize=8)
+        
+        for i in range(len(matrix_cols)):
+            for j in range(len(matrix_cols)):
+                val = grid_arr[i, j]
+                ax_mat.text(j, i, f"{val:.2f}", ha="center", va="center", color="white" if abs(val) > 0.4 else "black", fontsize=7)
+                
+        cbar = fig.colorbar(im, ax=ax_mat, fraction=0.046, pad=0.04)
+        cbar.ax.tick_params(colors=TEXT_MUTED, labelsize=7)
+    
+    # Top Pairs Table Box
+    ax_pairs = fig.add_axes([0.12, 0.10, 0.76, 0.28])
+    ax_pairs.set_facecolor(CARD_COLOR)
+    for spine in ax_pairs.spines.values():
+        spine.set_color(BORDER_COLOR)
+    ax_pairs.set_xticks([])
+    ax_pairs.set_yticks([])
+    
+    ax_pairs.text(0.04, 0.88, "Strongest Correlated Pairs", fontsize=11, weight="bold", color=TEXT_COLOR)
+    
+    pairs = corr_data.get("pairs", [])[:5]
+    y = 0.72
+    if pairs:
+        for p in pairs:
+            col_a = p.get("col_a", "")
+            col_b = p.get("col_b", "")
+            r = p.get("correlation", 0.0)
+            strength = p.get("strength", "")
+            r_color = CYAN if r > 0 else ORANGE
+            ax_pairs.text(0.04, y, f"{col_a}  ↔  {col_b}", fontsize=9, color=TEXT_COLOR)
+            ax_pairs.text(0.65, y, f"r = {r:+.3f}", fontsize=9, weight="bold", color=r_color)
+            ax_pairs.text(0.82, y, f"({strength})", fontsize=8, color=TEXT_MUTED)
+            y -= 0.15
+    else:
+        ax_pairs.text(0.04, 0.5, "Not enough numeric columns for pair correlation ranking.", color=TEXT_MUTED, fontsize=9)
+
+    _draw_footer(fig, 4)
+    pdf.savefig(fig, facecolor=BG_COLOR, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _page_feature_discovery(pdf: PdfPages, feat_data: dict):
+    fig = _setup_fig()
+    _draw_header(fig, "4. Feature Discovery & Importance", "Predictive driver ranking using automated Random Forest / ANOVA")
+    
+    target = feat_data.get("target") or feat_data.get("target_variable") or "Auto-detected Target"
+    method = feat_data.get("methodology", "Random Forest Feature Importance")
+    
+    fig.text(0.10, 0.86, f"Analyzed Target Variable: {target}", fontsize=11, weight="bold", color=ORANGE)
+    fig.text(0.10, 0.835, f"Methodology: {method}", fontsize=8.5, color=TEXT_MUTED)
+    
+    features = feat_data.get("features", []) or feat_data.get("feature_importance", []) or []
+    if not features and isinstance(feat_data.get("importance"), dict):
+        features = [{"feature": k, "score": v} for k, v in feat_data["importance"].items()]
+        
+    ax_feat = fig.add_axes([0.15, 0.35, 0.72, 0.44])
+    ax_feat.set_facecolor(CARD_COLOR)
+    for spine in ax_feat.spines.values():
+        spine.set_color(BORDER_COLOR)
+    ax_feat.tick_params(colors=TEXT_MUTED, labelsize=8)
+    
+    if features:
+        top_f = features[:10]
+        names = [f.get("feature", f.get("name", "")) for f in top_f]
+        scores = [float(f.get("score", f.get("importance", 0))) for f in top_f]
+        
+        bars = ax_feat.barh(names[::-1], scores[::-1], color=PURPLE, edgecolor="none", height=0.6)
+        ax_feat.set_xlabel("Relative Importance Score", color=TEXT_MUTED, fontsize=9)
+        ax_feat.set_title("Predictive Power Ranking", color=TEXT_COLOR, fontsize=11, weight="bold", pad=8)
+        
+        for bar in bars:
+            w = bar.get_width()
+            if w > 0:
+                ax_feat.text(w + 0.005, bar.get_y() + bar.get_height() / 2, f"{w:.3f}", va="center", color=TEXT_COLOR, fontsize=8)
+    else:
+        ax_feat.text(0.5, 0.5, "Feature importance could not be calculated (no discrete target found).", color=TEXT_MUTED, ha="center", fontsize=10)
+        
+    # Interpretation box
+    ax_box = fig.add_axes([0.12, 0.10, 0.76, 0.20])
+    ax_box.set_facecolor(CARD_COLOR)
+    for spine in ax_box.spines.values():
+        spine.set_color(BORDER_COLOR)
+    ax_box.set_xticks([])
+    ax_box.set_yticks([])
+    
+    ax_box.text(0.04, 0.80, "Modeling Takeaways & Recommendations", fontsize=10, weight="bold", color=CYAN)
+    if features:
+        top_name = features[0].get("feature", "The top feature")
+        ax_box.text(0.04, 0.55, f"• {top_name} exhibits the highest predictive influence over {target}.", fontsize=8.5, color=TEXT_COLOR)
+        ax_box.text(0.04, 0.35, f"• Recommend retaining top {min(5, len(features))} drivers for baseline machine learning models.", fontsize=8.5, color=TEXT_MUTED)
+        ax_box.text(0.04, 0.15, "• Low-ranking features may be candidates for dimensionality reduction or removal.", fontsize=8.5, color=TEXT_MUTED)
+    else:
+        ax_box.text(0.04, 0.5, "Select a target variable from the Feature Discovery tab to compute importance rankings.", fontsize=8.5, color=TEXT_MUTED)
+
+    _draw_footer(fig, 5)
+    pdf.savefig(fig, facecolor=BG_COLOR, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _page_session_history(pdf: PdfPages, history: list[dict]):
+    fig = _setup_fig()
+    _draw_header(fig, "5. AI Analyst Session History & Insights", "Conversational analyses executed during this session")
+    
+    if not history:
+        fig.text(0.5, 0.5, "No ad-hoc analytical queries were recorded in this session.", fontsize=11, color=TEXT_MUTED, ha="center")
+    else:
+        y = 0.84
+        for idx, item in enumerate(history[:4], 1):
+            ax_item = fig.add_axes([0.10, y - 0.16, 0.80, 0.15])
+            ax_item.set_facecolor(CARD_COLOR)
+            for spine in ax_item.spines.values():
+                spine.set_color(BORDER_COLOR)
+            ax_item.set_xticks([])
+            ax_item.set_yticks([])
+            
+            title = item.get("title", f"Query {idx}")
+            a_type = item.get("analysis_type", "analysis").upper()
+            expl = item.get("explanation", "") or ""
+            
+            ax_item.text(0.03, 0.80, title, fontsize=10.5, weight="bold", color=TEXT_COLOR)
+            ax_item.text(0.85, 0.80, a_type, fontsize=8, weight="bold", color=ORANGE, ha="right")
+            
+            stats = item.get("statistics", {})
+            stat_summary = " · ".join([f"{k}: {v}" for k, v in list(stats.items())[:3] if isinstance(v, (int, float, str))])
+            if stat_summary:
+                ax_item.text(0.03, 0.55, f"Statistics: {stat_summary}", fontsize=8, color=CYAN)
+                
+            if expl:
+                ax_item.text(0.03, 0.25, expl[:160] + ("..." if len(expl) > 160 else ""), fontsize=7.5, color=TEXT_MUTED)
+                
+            y -= 0.18
+            
+    _draw_footer(fig, 6)
+    pdf.savefig(fig, facecolor=BG_COLOR, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _build_pdf(report_id: str, payload: dict, filename: str) -> Path:
+    path = _REPORT_DIR / f"{report_id}.pdf"
+    health = payload.get("health", {}) or {}
+    eda = payload.get("eda", {}) or {}
+    cleaning = payload.get("cleaning_scan", {}) or {}
+    univariate = payload.get("univariate", {}) or {}
+    correlation = payload.get("correlation", {}) or {}
+    feat_discovery = payload.get("feature_discovery", {}) or {}
+    history = payload.get("history", []) or []
+    
+    with PdfPages(path) as pdf:
+        _page_cover(pdf, filename, health, eda)
+        _page_health_and_cleaning(pdf, health, cleaning, eda)
+        if univariate:
+            _page_univariate(pdf, univariate)
+        if correlation:
+            _page_correlation(pdf, correlation)
+        if feat_discovery:
+            _page_feature_discovery(pdf, feat_discovery)
+        if history:
+            _page_session_history(pdf, history)
+            
+    return path
+
+
+def generate_report(dataset_id: str | None = None, session_id: str | None = None) -> dict:
+    if not dataset_id and session_id:
+        from backend.services.session_service import get_session
+        chat_session = get_session(session_id)
+        dataset_id = chat_session.dataset_id if chat_session else None
+    if dataset_id:
+        from backend.services.dataset_service import get_dataset
+        if get_dataset(dataset_id) is None:
+            raise ValueError(f"Dataset {dataset_id} not found")
+    report_id = uuid.uuid4().hex[:12]
+    payload = build_report_payload(dataset_id)
+    filename = payload.get("eda", {}).get("dataset_name") or payload.get("eda", {}).get("filename") or "dataset"
+    pdf_path = _build_pdf(report_id, payload, str(filename))
+    record = {
+        "report_id": report_id,
+        "dataset_id": dataset_id,
+        "session_id": session_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "sections": payload.get("sections", []),
+        "pdf_path": str(pdf_path),
+        "data": payload,
+    }
+    _STORE[report_id] = record
+    _persist_store()
+    return record
+
+
+def _persist_store():
+    import json
+    index_path = _REPORT_DIR / "reports_index.json"
+    try:
+        data_to_save = {}
+        for rid, rec in _STORE.items():
+            data_to_save[rid] = {
+                "report_id": rec["report_id"],
+                "dataset_id": rec.get("dataset_id"),
+                "session_id": rec.get("session_id"),
+                "created_at": rec.get("created_at"),
+                "sections": rec.get("sections", []),
+                "pdf_path": rec.get("pdf_path"),
+            }
+        index_path.write_text(json.dumps(data_to_save, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _sync_store():
+    import json
+    index_path = _REPORT_DIR / "reports_index.json"
+    if index_path.is_file():
+        try:
+            data = json.loads(index_path.read_text(encoding="utf-8"))
+            for rid, rec in data.items():
+                if rid not in _STORE:
+                    _STORE[rid] = rec
+        except Exception:
+            pass
+
+
+def get_report(report_id: str) -> dict | None:
+    _sync_store()
+    return _STORE.get(report_id)
+
+
+def list_reports() -> list:
+    _sync_store()
+    return [
+        {key: value for key, value in record.items() if key != "data"}
+        for record in _STORE.values()
+    ]
