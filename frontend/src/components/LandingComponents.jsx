@@ -1,24 +1,328 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Activity,
+  AlertCircle,
+  AlertTriangle,
   ArrowRight,
   BarChart3,
   Bot,
   BrainCircuit,
+  Check,
   CheckCircle2,
   ChevronRight,
   Database,
+  DollarSign,
   Download,
+  FileSpreadsheet,
   FileText,
+  Gauge,
+  Hash,
+  HelpCircle,
+  Home,
   Layers,
   LineChart,
+  MapPin,
   Play,
   RefreshCw,
+  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Terminal,
+  TrendingUp,
+  User,
+  Users,
   Zap,
 } from 'lucide-react'
+
+// ── What Argus Does Showcase (First Page Master Capability Console) ───────────────
+export function WhatArgusDoesShowcase({ onEnter, onDemo }) {
+  const [activeTab, setActiveTab] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const containerRef = useRef(null)
+  const [inView, setInView] = useState(false)
+
+  // Observe entering view inside the landing-scroll container
+  useEffect(() => {
+    const node = containerRef.current
+    if (!node) return undefined
+    const scrollRoot = node.closest('.landing-scroll')
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setInView(entry.isIntersecting)
+      },
+      { root: scrollRoot || null, threshold: 0.08 }
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+
+  const capabilities = [
+    {
+      id: 'ingestion',
+      tabLabel: 'Smart Ingestion',
+      icon: <FileSpreadsheet size={15} color="#38BDF8" />,
+      badge: 'ZERO-CONFIG INGESTION',
+      badgeColor: '#38BDF8',
+      title: 'Automated Type & Schema Detection',
+      tagline: 'Drop in raw files. Argus types, cleans, and structures everything.',
+      description: 'Zero manual schema definition. Argus auto-detects 10+ file types (CSV, XLSX, Parquet, JSON), smells delimiters, handles encoding anomalies (UTF-8, Latin-1, CP1252), and parses semantic types: ISO dates, timestamps, currencies, percentages, and categorical hierarchies.',
+      highlights: [
+        'Auto-sniffs dates, currencies, and boolean values on arrival',
+        'Detects and reclaims corrupted rows and nulled string tokens',
+        'Assigns statistical column roles for downstream machine learning'
+      ],
+      engineBadge: 'Python 3.11 · pandas.read_csv · auto_sniff_datetime',
+      proof: '4,812 rows × 12 cols ingested & typed in 0.38s'
+    },
+    {
+      id: 'profiling',
+      tabLabel: 'Deep Profiling',
+      icon: <Activity size={15} color="#1D9E75" />,
+      badge: 'DETERMINISTIC STATS',
+      badgeColor: '#1D9E75',
+      title: 'Autonomous Statistical Profiling',
+      tagline: '100% computed arithmetic. Zero estimates or hallucinations.',
+      description: 'Calculates a 0–100 composite Dataset Health Score factoring missingness, duplicates, and anomaly severity. Computes Tukey IQR fences, tail skewness, kurtosis, and full Pearson and Spearman correlation matrices with statistical two-tailed p-values.',
+      highlights: [
+        '0-100 Dataset Health Score with breakdown penalties',
+        'Tukey IQR fences (Q1 - 1.5*IQR, Q3 + 1.5*IQR) detect anomalies',
+        'Pearson & Spearman correlation matrices with statistical significance'
+      ],
+      engineBadge: 'SciPy 1.11 · scipy.stats.skew · Tukey Fences',
+      proof: '10+ publication-ready SVG statistical charts auto-generated'
+    },
+    {
+      id: 'sandbox',
+      tabLabel: 'AST Sandbox',
+      icon: <ShieldCheck size={15} color="#EF9F27" />,
+      badge: 'AIR-GAPPED PRIVACY',
+      badgeColor: '#EF9F27',
+      title: 'AST-Gated Python Execution Sandbox',
+      tagline: 'Local memory execution. Your rows never touch the cloud.',
+      description: 'Executes pandas and SciPy calculations inside an ephemeral, memory-isolated local subprocess. An AST static analysis gate inspects every line of generated code before execution, blocking all network sockets, file persistence, and malicious system calls.',
+      highlights: [
+        '100% in-memory computation — zero data persisted to disk',
+        'AST gate blocks network, filesystem writes, and subprocess execution',
+        'Ephemeral session memory purges immediately upon browser exit'
+      ],
+      engineBadge: 'Python ast.parse · Memory Isolation · Zero Cloud Sockets',
+      proof: 'Passed 100% of AST security validation tests'
+    },
+    {
+      id: 'agents',
+      tabLabel: 'Grounded AI',
+      icon: <BrainCircuit size={15} color="#F97316" />,
+      badge: 'LANGGRAPH MULTI-AGENT',
+      badgeColor: '#F97316',
+      title: 'Multi-Agent Grounded Narration',
+      tagline: 'Planner + Validator agents. Translates math into executive insight.',
+      description: 'A multi-agent state graph coordinates a Planner, Tool Router, and Validator. Strict mathematical grounding guarantees the model never invents or guesses a number — it only explains already-computed statistics in boardroom-ready, plain English prose.',
+      highlights: [
+        'Autonomous query planning routes to deterministic statistical tools',
+        'Self-correcting validator retries code errors rather than guessing',
+        'Executive PDF audit report generated with 1 click'
+      ],
+      engineBadge: 'LangGraph StateGraph v0.2 · Grounded Construction',
+      proof: '0 Hallucinations: every token traced to Python output'
+    }
+  ]
+
+  // Auto-advance tabs every 4.5s only when visible and not hovered
+  useEffect(() => {
+    if (!inView || paused) return undefined
+    const timer = setInterval(() => {
+      setActiveTab((prev) => (prev + 1) % capabilities.length)
+    }, 4500)
+    return () => clearInterval(timer)
+  }, [inView, paused, capabilities.length])
+
+  const current = capabilities[activeTab]
+
+  return (
+    <div
+      ref={containerRef}
+      className="what-we-do-console"
+      onPointerEnter={() => setPaused(true)}
+      onPointerLeave={() => setPaused(false)}
+      role="region"
+      aria-label="What Argus Does Capability Showcase"
+    >
+      {/* Console Top Window Bar */}
+      <div className="console-topbar">
+        <div className="console-window-controls" aria-hidden="true">
+          <span className="dot red" />
+          <span className="dot yellow" />
+          <span className="dot green" />
+        </div>
+        <div className="console-title">
+          <span>WHAT ARGUS DOES</span>
+          <span className="console-pill">Live Architecture</span>
+        </div>
+        <div className="console-speed">
+          <span className="live-dot" />
+          <span>Python 3.11 Local Kernel</span>
+        </div>
+      </div>
+
+      {/* 4 Superpower Tab Strip */}
+      <div className="console-tab-strip" role="tablist">
+        {capabilities.map((cap, idx) => (
+          <button
+            key={cap.id}
+            role="tab"
+            aria-selected={activeTab === idx}
+            className={`console-tab ${activeTab === idx ? 'active' : ''}`}
+            onClick={() => setActiveTab(idx)}
+          >
+            {cap.icon}
+            <span>{cap.tabLabel}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Main Capability Exhibition Body */}
+      <div className="console-body" key={current.id}>
+        <div className="console-cap-head">
+          <div className="console-cap-badge" style={{ color: current.badgeColor, borderColor: `${current.badgeColor}40`, background: `${current.badgeColor}18` }}>
+            <span>{current.badge}</span>
+          </div>
+          <span className="console-step-num">PILLAR {activeTab + 1} OF 4</span>
+        </div>
+
+        <h3 className="console-cap-title">{current.title}</h3>
+        <p className="console-cap-tagline">{current.tagline}</p>
+        <p className="console-cap-desc">{current.description}</p>
+
+        {/* Feature Checkpoints */}
+        <div className="console-checkpoints">
+          {current.highlights.map((h, i) => (
+            <div key={i} className="console-check-item">
+              <CheckCircle2 size={14} className="check-icon" style={{ color: current.badgeColor }} />
+              <span>{h}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Terminal Proof Bar */}
+        <div className="console-terminal-bar">
+          <Terminal size={13} className="term-icon" />
+          <span className="term-cmd">{current.engineBadge}</span>
+          <span className="term-proof">{current.proof}</span>
+        </div>
+      </div>
+
+      {/* Console Bottom Action Strip */}
+      <div className="console-foot-strip">
+        <div className="console-dots-nav">
+          {capabilities.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              className={`c-dot ${i === activeTab ? 'active' : ''}`}
+              onClick={() => setActiveTab(i)}
+              aria-label={`Go to pillar ${i + 1}`}
+            />
+          ))}
+        </div>
+        <div className="console-foot-actions">
+          <button
+            type="button"
+            className="console-next-btn"
+            onClick={() => setActiveTab((p) => (p + 1) % capabilities.length)}
+          >
+            <span>Next Superpower</span>
+            <ChevronRight size={13} />
+          </button>
+          <button
+            type="button"
+            className="console-launch-btn"
+            onClick={onDemo}
+          >
+            <Zap size={13} />
+            <span>Test Live in Workspace &rarr;</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Mobile What We Do Cards Component
+export function MobileWhatWeDoCards({ onEnter, onDemo }) {
+  const [activeTab, setActiveTab] = useState(0)
+
+  const capabilities = [
+    {
+      id: 'ingestion',
+      label: '📁 Smart Types',
+      badge: 'SMART INGESTION',
+      color: '#38BDF8',
+      title: '0-Config Schema Ingestion',
+      desc: 'Auto-detects CSV, Excel, Parquet & JSON. Sniffs dates, currency, percentages and booleans with zero manual setup.',
+      stat: '0.38s Ingestion Time'
+    },
+    {
+      id: 'profiling',
+      label: '📊 Profiling',
+      badge: 'DEEP PROFILING',
+      color: '#1D9E75',
+      title: 'Tukey Fences & Health Scoring',
+      desc: 'Computes a 0–100 data health index, Tukey outlier fences, skewness, and Pearson/Spearman correlation matrices.',
+      stat: '10+ Auto-Drawn SVG Charts'
+    },
+    {
+      id: 'sandbox',
+      label: '🛡️ Sandbox',
+      badge: 'AST-GATED PRIVACY',
+      color: '#EF9F27',
+      title: 'Air-Gapped Python Sandbox',
+      desc: 'Runs 100% in-memory Python with AST code verification. Zero network calls, zero disk writes, zero data retention.',
+      stat: '100% In-Memory Python'
+    },
+    {
+      id: 'agents',
+      label: '🤖 AI Agents',
+      badge: 'LANGGRAPH AGENTS',
+      color: '#F97316',
+      title: 'Grounded AI Narration',
+      desc: 'Autonomous planner and validator agents translate raw computed statistics into plain-English executive summaries.',
+      stat: '0 Hallucinations Guaranteed'
+    }
+  ]
+
+  const cur = capabilities[activeTab]
+
+  return (
+    <div className="mobile-what-we-do-shell">
+      <div className="mobile-wwd-tabs">
+        {capabilities.map((c, i) => (
+          <button
+            key={c.id}
+            className={`mobile-wwd-tab ${activeTab === i ? 'active' : ''}`}
+            onClick={() => setActiveTab(i)}
+            style={activeTab === i ? { borderColor: c.color, color: '#fff', background: `${c.color}22` } : {}}
+          >
+            <span>{c.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="mobile-wwd-card" key={cur.id}>
+        <div className="mobile-wwd-card-head">
+          <span className="mobile-wwd-badge" style={{ color: cur.color, borderColor: `${cur.color}40`, background: `${cur.color}18` }}>
+            {cur.badge}
+          </span>
+          <span className="mobile-wwd-stat">{cur.stat}</span>
+        </div>
+        <h4 className="mobile-wwd-title">{cur.title}</h4>
+        <p className="mobile-wwd-desc">{cur.desc}</p>
+        <div className="mobile-wwd-foot">
+          <span className="mobile-wwd-guarantee">✦ 100% Local Python Engine · 0 Cloud Retention</span>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── Hero Data Pulse (Interactive Mini-Studio Preview in Hero) ───────────────
 export function HeroDataPulse({ onEnter, onDemo }) {
@@ -204,6 +508,16 @@ export function HeroDataPulse({ onEnter, onDemo }) {
                     className={`matrix-cell-card ${hoveredCell === idx ? 'hovered' : ''}`}
                     onMouseEnter={() => setHoveredCell(idx)}
                     onMouseLeave={() => setHoveredCell(null)}
+                    onClick={() => setHoveredCell((h) => (h === idx ? null : idx))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setHoveredCell((h) => (h === idx ? null : idx))
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-expanded={hoveredCell === idx}
                     style={{ '--accent': color }}
                   >
                     <div className="cell-pair">{col1} ↔ {col2}</div>
@@ -232,400 +546,822 @@ export function HeroDataPulse({ onEnter, onDemo }) {
   )
 }
 
-// ── Bento-Style Features Matrix ─────────────────────────────────────────────
-export function BentoFeatures() {
+// ── Streamlit-Inspired Modular EDA Features Workbench ───────────────────────
+const PILLAR_KEYS = ['health', 'missing', 'outliers', 'correlation', 'prescriptions']
+
+// Smooth, flicker-free count hook via requestAnimationFrame (starts close to target to prevent text layout jitter)
+function useSmoothCount(target, from = Math.max(0, target - 16), duration = 400) {
+  const [val, setVal] = useState(from)
+  useEffect(() => {
+    let startTimestamp = null
+    let raf = null
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp
+      const elapsed = timestamp - startTimestamp
+      const progress = Math.min(elapsed / duration, 1)
+      const ease = 1 - Math.pow(1 - progress, 3)
+      setVal(Math.round(from + ease * (target - from)))
+      if (progress < 1) {
+        raf = requestAnimationFrame(step)
+      }
+    }
+    raf = requestAnimationFrame(step)
+    return () => {
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [target, from, duration])
+  return val
+}
+
+// Sub-component: 📊 Health Score (Stable DOM, butter-smooth ring, zero re-mount flicker)
+function HealthScoreWidget() {
+  const score = useSmoothCount(87, 72, 450)
+
   return (
-    <div className="arg-bento-grid">
-      {/* 1. Large Feature Card: Instant Automated EDA */}
-      <article className="arg-bento-card bento-hero-card" style={{ '--accent': '#f97316' }}>
-        <div className="bento-badge" style={{ background: '#f9731622', color: '#f97316' }}>
-          <Zap size={13} />
-          <span>FLAGSHIP SPEED</span>
-        </div>
-        <h3>Instant Automated EDA</h3>
-        <p>
-          Drop any dataset in and get 10+ publication-ready charts in under 3 seconds. Histograms, correlation matrices, box plots, and feature rankings are computed instantly without writing a single line of pandas.
-        </p>
-        <div className="bento-chart-strip">
-          <div className="chart-preview-bar"><span style={{ height: '45%' }} /><span style={{ height: '80%' }} /><span style={{ height: '62%' }} /><span style={{ height: '95%' }} /><span style={{ height: '38%' }} /><span style={{ height: '70%' }} /></div>
-          <div className="chart-preview-meta">
-            <span className="pill">⚡ 2.8s generation</span>
-            <span className="pill">10+ SVG charts</span>
-            <span className="pill">Deterministic compute</span>
-          </div>
-        </div>
-      </article>
-
-      {/* 2. AI Column Descriptions */}
-      <article className="arg-bento-card" style={{ '--accent': '#7f77dd' }}>
-        <div className="bento-badge" style={{ background: '#7f77dd22', color: '#7f77dd' }}>
-          <BrainCircuit size={13} />
-          <span>DEEP PROFILING</span>
-        </div>
-        <h3>AI Column Descriptions</h3>
-        <p>
-          Every column explained in plain English — distribution skew, outliers, missingness, and statistical anomalies with actionable guidance.
-        </p>
-        <div className="bento-chip-preview">
-          <code>customer_age: median 34.2 · skew +0.41 · 0 nulls</code>
-          <span className="chip-sub">✓ Normal Gaussian distribution</span>
-        </div>
-      </article>
-
-      {/* 3. Grounded AI Chat */}
-      <article className="arg-bento-card" style={{ '--accent': '#1d9e75' }}>
-        <div className="bento-badge" style={{ background: '#1d9e7522', color: '#1d9e75' }}>
-          <Bot size={13} />
-          <span>GROUNDED NARRATIVE</span>
-        </div>
-        <h3>Grounded AI Analyst</h3>
-        <p>
-          Ask questions in natural language. Argus chooses deterministic Python tools, calculates exact statistics locally, and explains what was computed.
-        </p>
-        <div className="bento-query-bubble">
-          <span className="q">"Which category drives the highest margin?"</span>
-          <span className="a">✓ Enterprise Tier (+38.4% gross margin)</span>
-        </div>
-      </article>
-
-      {/* 4. Anomaly & Outlier Detection */}
-      <article className="arg-bento-card" style={{ '--accent': '#e24b4a' }}>
-        <div className="bento-badge" style={{ background: '#e24b4a22', color: '#e24b4a' }}>
-          <Activity size={13} />
-          <span>DATA HYGIENE</span>
-        </div>
-        <h3>Outlier & Anomaly Detection</h3>
-        <p>
-          Outliers flagged with mathematical IQR fencing and z-scores. Negative counts, impossible zero prices, and extreme anomalies caught on arrival.
-        </p>
-        <div className="bento-stat-highlight">
-          <b className="val red">118 Outliers</b>
-          <span className="sub">Flagged via Q3 + 1.5×IQR boundary</span>
-        </div>
-      </article>
-
-      {/* 5. Dataset Health Score */}
-      <article className="arg-bento-card" style={{ '--accent': '#378add' }}>
-        <div className="bento-badge" style={{ background: '#378add22', color: '#378add' }}>
-          <Activity size={13} />
-          <span>QUALITY PULSE</span>
-        </div>
-        <h3>Dataset Health Score</h3>
-        <p>
-          A single 0–100 composite index summarizing missing values, duplicate rows, skewness, and outlier severity so you judge dataset readiness instantly.
-        </p>
-        <div className="bento-health-mini">
-          <div className="score-ring">
-            <span className="num">87</span>
+    <div className="eda-feature-widget health-widget animated-widget">
+      <div className="health-gauge-row">
+        <div className="health-ring-box">
+          <svg width="96" height="96" viewBox="0 0 72 72">
+            <circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+            <circle
+              cx="36"
+              cy="36"
+              r="28"
+              fill="none"
+              stroke="#1D9E75"
+              strokeWidth="6"
+              strokeDasharray="176 176"
+              strokeDashoffset="23"
+              strokeLinecap="round"
+              transform="rotate(-90 36 36)"
+              className="health-ring-fill-animated"
+            />
+          </svg>
+          <div className="health-ring-center">
+            <b className="num" style={{ color: '#1D9E75', fontVariantNumeric: 'tabular-nums' }}>{score}</b>
             <span className="lbl">/100</span>
           </div>
-          <div className="score-details">
-            <span>2.4% missing</span>
-            <span>0 duplicate rows</span>
-            <span>Clean formatting</span>
+        </div>
+        <div className="health-penalties">
+          <div className="penalty-item">
+            <div className="penalty-label-row">
+              <span>Missing Values (19.9% in Age)</span>
+              <span className="penalty-val red">-12</span>
+            </div>
+            <div className="penalty-track">
+              <div className="penalty-bar red penalty-bar-missing-anim" />
+            </div>
+          </div>
+          <div className="penalty-item">
+            <div className="penalty-label-row">
+              <span>Duplicate Rows</span>
+              <span className="penalty-val green">0</span>
+            </div>
+            <div className="penalty-track">
+              <div className="penalty-bar green" style={{ width: '0%' }} />
+            </div>
+          </div>
+          <div className="penalty-item">
+            <div className="penalty-label-row">
+              <span>Tukey Outliers</span>
+              <span className="penalty-val orange">-1</span>
+            </div>
+            <div className="penalty-track">
+              <div className="penalty-bar orange penalty-bar-outlier-anim" />
+            </div>
           </div>
         </div>
-      </article>
-
-      {/* 6. Smart Prescriptive Next Steps */}
-      <article className="arg-bento-card" style={{ '--accent': '#ef9f27' }}>
-        <div className="bento-badge" style={{ background: '#ef9f2722', color: '#ef9f27' }}>
-          <CheckCircle2 size={13} />
-          <span>ACTIONABLE ML</span>
-        </div>
-        <h3>Prescriptive Next Steps</h3>
-        <p>
-          AI recommends concrete data engineering tasks: median imputation for missing features, log transforms for right-skewed columns, and categorical encoding.
-        </p>
-        <ul className="bento-checklist">
-          <li>✓ Impute missing Age with median (28.0)</li>
-          <li>✓ Log-transform skewed Fare (skew: 4.79)</li>
-          <li>✓ Target-encode multi-level categories</li>
-        </ul>
-      </article>
+      </div>
+      <div className="eda-widget-footnote">
+        <span>Score formula: 100 - missing penalty - duplicate penalty - outlier penalty</span>
+      </div>
     </div>
   )
 }
 
-// ── Interactive Workspace Showcase (Replacing generic robot hand in Gallery) ──
-export function WorkspaceShowcase({ onEnter, onDemo }) {
-  const [activeTab, setActiveTab] = useState('analyst') // 'analyst' | 'dataset' | 'reports'
+// Sub-component: 🧱 Missing Heatmap (Solid, immediate appearance, zero black flash)
+const MISSING_COLS = [
+  { name: 'PassengerId', role: 'Key', Icon: Hash, pct: 0, status: 'clean', color: '#1D9E75', text: '0% Clean' },
+  { name: 'Survived', role: 'Target', Icon: CheckCircle2, pct: 0, status: 'clean', color: '#1D9E75', text: '0% Clean' },
+  { name: 'Pclass', role: 'Class', Icon: Layers, pct: 0, status: 'clean', color: '#1D9E75', text: '0% Clean' },
+  { name: 'Age', role: 'Float', Icon: User, pct: 19.9, status: 'warn', color: '#EF9F27', text: '19.9% Null' },
+  { name: 'SibSp', role: 'Count', Icon: Users, pct: 0, status: 'clean', color: '#1D9E75', text: '0% Clean' },
+  { name: 'Parch', role: 'Count', Icon: Users, pct: 0, status: 'clean', color: '#1D9E75', text: '0% Clean' },
+  { name: 'Fare', role: 'Price', Icon: DollarSign, pct: 0, status: 'clean', color: '#1D9E75', text: '0% Clean' },
+  { name: 'Cabin', role: 'Sparse', Icon: Home, pct: 77.1, status: 'alert', color: '#E24B4A', text: '77.1% Null' },
+  { name: 'Embarked', role: 'Port', Icon: MapPin, pct: 0.2, status: 'clean', color: '#1D9E75', text: '0.2% Low' },
+]
+
+function MissingHeatmapWidget() {
+  return (
+    <div className="eda-feature-widget missing-widget animated-widget">
+      <div className="missing-tiles-grid missing-tiles-grid-enhanced">
+        {MISSING_COLS.map((c) => {
+          const ColIcon = c.Icon
+          return (
+            <div
+              key={c.name}
+              className={`missing-col-tile missing-tile-enhanced ${c.status}`}
+              style={{
+                borderColor: `${c.color}40`,
+              }}
+              title={`${c.name}: ${c.pct}% missing`}
+            >
+              <div className="tile-top-row">
+                <div className="tile-col-badge">
+                  <ColIcon size={12} style={{ color: c.color }} />
+                  <span className="tile-name-full">{c.name}</span>
+                </div>
+                <span className="tile-role-pill">{c.role}</span>
+              </div>
+              <div className="tile-box-enhanced" style={{ background: `${c.color}18`, borderColor: `${c.color}38` }}>
+                {c.status === 'clean' ? (
+                  <CheckCircle2 size={13} style={{ color: c.color, flexShrink: 0 }} />
+                ) : c.status === 'warn' ? (
+                  <AlertTriangle size={13} style={{ color: c.color, flexShrink: 0 }} />
+                ) : (
+                  <AlertCircle size={13} style={{ color: c.color, flexShrink: 0 }} />
+                )}
+                <span className="tile-status-txt" style={{ color: c.color }}>{c.text}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div className="missing-legend">
+        <span className="leg-item"><span className="leg-dot" style={{ background: '#1D9E75' }} /> Clean (0%)</span>
+        <span className="leg-item"><span className="leg-dot" style={{ background: '#EF9F27' }} /> Low (&lt;20%)</span>
+        <span className="leg-item"><span className="leg-dot" style={{ background: '#E24B4A' }} /> High (&ge;50%)</span>
+      </div>
+    </div>
+  )
+}
+
+// Sub-component: 📐 Tukey Outliers (Stable IQR display, no strobe effect)
+function TukeyOutliersWidget() {
+  const outlierCount = useSmoothCount(118, 98, 450)
 
   return (
-    <div className="arg-workspace-showcase">
-      {/* Mobile-Friendly Segmented View Switcher */}
-      <div className="arg-showcase-tab-bar" role="tablist">
-        <button
-          role="tab"
-          aria-selected={activeTab === 'analyst'}
-          className={`arg-showcase-tab ${activeTab === 'analyst' ? 'active' : ''}`}
-          onClick={() => setActiveTab('analyst')}
-        >
-          <Bot size={15} />
-          <span>AI Analyst</span>
-        </button>
-        <button
-          role="tab"
-          aria-selected={activeTab === 'dataset'}
-          className={`arg-showcase-tab ${activeTab === 'dataset' ? 'active' : ''}`}
-          onClick={() => setActiveTab('dataset')}
-        >
-          <Database size={15} />
-          <span>Dataset Health</span>
-        </button>
-        <button
-          role="tab"
-          aria-selected={activeTab === 'reports'}
-          className={`arg-showcase-tab ${activeTab === 'reports' ? 'active' : ''}`}
-          onClick={() => setActiveTab('reports')}
-        >
-          <FileText size={15} />
-          <span>Explore & Reports</span>
-        </button>
+    <div className="eda-feature-widget outliers-widget animated-widget">
+      <div className="outlier-stat-banner">
+        <div className="outlier-metric-box">
+          <span className="outlier-lbl">FLAGGED OUTLIERS</span>
+          <b className="outlier-num red" style={{ fontVariantNumeric: 'tabular-nums' }}>{outlierCount} rows (13.2%)</b>
+          <span className="outlier-sub">Column: Fare (USD)</span>
+        </div>
+        <div className="outlier-fences outlier-fences-anim">
+          <div className="fence-row">
+            <span className="f-lbl">Q1 (25%):</span>
+            <span className="f-val">$7.91</span>
+          </div>
+          <div className="fence-row">
+            <span className="f-lbl">Median:</span>
+            <span className="f-val">$14.45</span>
+          </div>
+          <div className="fence-row">
+            <span className="f-lbl">Q3 (75%):</span>
+            <span className="f-val">$31.00</span>
+          </div>
+          <div className="fence-row fence-boundary">
+            <span className="f-lbl">Upper Fence:</span>
+            <span className="f-val red">$65.63</span>
+          </div>
+        </div>
+      </div>
+      <div className="eda-widget-footnote warn">
+        <span>Skewness: +4.78 (Extreme log-normal tilt). Max value: $512.33. Recommend log1p transform.</span>
+      </div>
+    </div>
+  )
+}
+
+// Sub-component: ⚡ Correlations (Solid cards, zero pop-in lag)
+const CORR_PAIRS = [
+  {
+    names: 'Pclass ↔ Fare',
+    tag: 'Strong Inverse',
+    tagClass: 'neg',
+    r: 'r = -0.55',
+    rColor: '#E24B4A',
+    p: 'p < 0.001 ★★★',
+  },
+  {
+    names: 'SibSp ↔ Parch',
+    tag: 'Moderate Positive',
+    tagClass: 'pos',
+    r: 'r = +0.41',
+    rColor: '#1D9E75',
+    p: 'p < 0.001 ★★★',
+  },
+  {
+    names: 'Pclass ↔ Age',
+    tag: 'Moderate Inverse',
+    tagClass: 'neg',
+    r: 'r = -0.37',
+    rColor: '#EF9F27',
+    p: 'p < 0.001 ★★★',
+  },
+]
+
+function CorrelationsWidget() {
+  return (
+    <div className="eda-feature-widget correlation-widget animated-widget">
+      <div className="corr-pairs-list">
+        {CORR_PAIRS.map((p) => (
+          <div
+            key={p.names}
+            className="corr-pair-card"
+          >
+            <div className="pair-names">
+              <strong>{p.names}</strong>
+              <span className={`pair-tag ${p.tagClass}`}>{p.tag}</span>
+            </div>
+            <div className="pair-metrics">
+              <span className="r-num" style={{ color: p.rColor }}>{p.r}</span>
+              <span className="p-pill">{p.p}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="eda-widget-footnote">
+        <span>Calculated via scipy.stats.pearsonr with Bonferroni multiple testing corrections.</span>
+      </div>
+    </div>
+  )
+}
+
+// Sub-component: 🛠️ ML Prescriptions (Clean actionable recommendations)
+const RX_LIST = [
+  {
+    title: 'Impute missing Age with median (28.0 yrs)',
+    detail: 'Preserves 177 rows without distorting normal distribution',
+    color: '#1D9E75',
+  },
+  {
+    title: 'Apply np.log1p transform to Fare',
+    detail: 'Reduces skewness from +4.78 to +0.39 for linear algorithms',
+    color: '#EF9F27',
+  },
+  {
+    title: "Mode imputation for Embarked ('S')",
+    detail: 'Only 2 null values (0.2%); safely assign modal category',
+    color: '#38BDF8',
+  },
+]
+
+function PrescriptionsWidget() {
+  return (
+    <div className="eda-feature-widget prescriptions-widget animated-widget">
+      <ul className="prescriptions-list">
+        {RX_LIST.map((r) => (
+          <li
+            key={r.title}
+            className="rx-item"
+          >
+            <CheckCircle2 size={16} style={{ color: r.color, flexShrink: 0 }} />
+            <div>
+              <strong>{r.title}</strong>
+              <span>{r.detail}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="eda-widget-footnote">
+        <span>Export ready: generated transformation code can be copied into Python pipelines.</span>
+      </div>
+    </div>
+  )
+}
+
+export function BentoFeatures() {
+  const [activePillar, setActivePillar] = useState('health')
+  const containerRef = useRef(null)
+
+  const advanceToNext = () => {
+    setActivePillar((prev) => {
+      const idx = PILLAR_KEYS.indexOf(prev)
+      const nextIdx = idx >= 0 ? (idx + 1) % PILLAR_KEYS.length : 0
+      return PILLAR_KEYS[nextIdx]
+    })
+  }
+
+  // Auto-run cycle across all 5 options:
+  // 📊 Health Score -> 🧱 Missing Heatmap -> 📐 Tukey Outliers -> ⚡ Correlations -> 🛠️ ML Prescriptions
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      advanceToNext()
+    }, 3800)
+    return () => clearTimeout(timer)
+  }, [activePillar])
+
+  const pillars = {
+    health: {
+      id: 'health',
+      emoji: '📊',
+      label: 'Health Score',
+      badge: 'AUTOMATED SCORING',
+      accent: '#1D9E75',
+      title: 'Dataset Health Score (0-100)',
+      desc: 'An automated composite index computed on upload: 100 minus penalties for missingness, duplicate rows, and outlier severity.',
+      metrics: [
+        { k: 'COMPUTE ENGINE', v: 'Argus Deterministic Auditor' },
+        { k: 'LATENCY', v: '< 3.5ms (In-Memory)' },
+        { k: 'COMPUTE BASIS', v: '100% Deterministic SciPy' },
+      ],
+      tags: ['Zero Hallucination', 'Strict Scipy Penalty Matrix', 'Instant Health Index'],
+      Widget: HealthScoreWidget,
+    },
+    missing: {
+      id: 'missing',
+      emoji: '🧱',
+      label: 'Missing Heatmap',
+      badge: 'COLUMN HYGIENE',
+      accent: '#EF9F27',
+      title: 'Col-by-Col Missing Value Heatmap',
+      desc: 'Immediate visual scan of all columns: green for completely clean columns, yellow for low nulls, and red for high null concentration.',
+      metrics: [
+        { k: 'SCAN DEPTH', v: '891 Rows x 12 Columns' },
+        { k: 'MASK PROFILER', v: 'MCAR / MAR Pattern Scan' },
+        { k: 'MEMORY ALLOC', v: 'Zero-Copy Pandas Series' },
+      ],
+      tags: ['Column Sparsity Heatmap', 'Null Gradient Mask', 'Auto Impute Prescription'],
+      Widget: MissingHeatmapWidget,
+    },
+    outliers: {
+      id: 'outliers',
+      emoji: '📐',
+      label: 'Tukey Outliers',
+      badge: 'ANOMALY FENCING',
+      accent: '#E24B4A',
+      title: 'Mathematical Tukey IQR Anomaly Fencing',
+      desc: 'Automatic detection of heavy tails and mathematical outliers using interquartile fencing [Q1 - 1.5×IQR, Q3 + 1.5×IQR].',
+      metrics: [
+        { k: 'ALGORITHM', v: 'Tukey 1.5xIQR Fence Rule' },
+        { k: 'SEVERITY TIER', v: 'Extreme Right Tilt (+4.78 Skew)' },
+        { k: 'TREATMENT REC', v: 'np.log1p Mathematical Scale' },
+      ],
+      tags: ['Non-Parametric', 'Robust to Heavy Tails', 'Interquartile Breakdown'],
+      Widget: TukeyOutliersWidget,
+    },
+    correlation: {
+      id: 'correlation',
+      emoji: '⚡',
+      label: 'Correlations',
+      badge: 'BIVARIATE STATS',
+      accent: '#7F77DD',
+      title: 'Pearson & Spearman Association Matrix',
+      desc: 'Deterministic correlation pairs computed locally with p-value significance testing (<0.05) to isolate predictive drivers.',
+      metrics: [
+        { k: 'COEFFICIENTS', v: 'Pearson r & Spearman Matrix' },
+        { k: 'SIGNIFICANCE', v: 'p < 0.001 (Bonferroni Corrected)' },
+        { k: 'PAIRWISE SCAN', v: 'Complete Bivariate Space' },
+      ],
+      tags: ['Multicollinearity Alert', 'Hypothesis Test Gate', 'Predictive Driver Isolation'],
+      Widget: CorrelationsWidget,
+    },
+    prescriptions: {
+      id: 'prescriptions',
+      emoji: '🛠️',
+      label: 'ML Prescriptions',
+      badge: 'PIPELINE READY',
+      accent: '#38BDF8',
+      title: 'Actionable Data Engineering Prescriptions',
+      desc: 'Deterministic, verified recommendations to prepare raw data for downstream machine learning modeling and model deployment.',
+      metrics: [
+        { k: 'CODE SYNTHESIS', v: 'Python 3.11 & Scikit-Learn Ready' },
+        { k: 'EXECUTION GATE', v: 'AST Grammar Sandbox Checked' },
+        { k: 'PORTABILITY', v: 'Copyable Pipeline Script (.py)' },
+      ],
+      tags: ['Median Age Impute', 'Log1p Fare Scaling', 'Categorical Mode Fill'],
+      Widget: PrescriptionsWidget,
+    },
+  }
+
+  const current = pillars[activePillar]
+  const currentIdx = PILLAR_KEYS.indexOf(activePillar)
+  const nextPillarKey = PILLAR_KEYS[currentIdx >= 0 ? (currentIdx + 1) % PILLAR_KEYS.length : 0]
+  const nextPillar = pillars[nextPillarKey]
+  const ActiveWidget = current.Widget
+
+  return (
+    <div
+      ref={containerRef}
+      className="arg-eda-workbench"
+    >
+      {/* Pillar Selection Tabs — Clean emoji + label with active highlight & progress fill */}
+      <div className="workbench-tabs" role="tablist">
+        {Object.values(pillars).map((p) => {
+          const isActive = activePillar === p.id
+          return (
+            <button
+              key={p.id}
+              role="tab"
+              aria-selected={isActive}
+              className={`workbench-tab ${isActive ? 'active' : ''}`}
+              onClick={() => {
+                setActivePillar(p.id)
+              }}
+              style={isActive ? { borderColor: p.accent, color: p.accent, background: `${p.accent}14` } : {}}
+            >
+              <span className="tab-emoji-icon">{p.emoji}</span>
+              <span className="tab-label-text">{p.label}</span>
+              {isActive && (
+                <span
+                  key={activePillar}
+                  className="tab-progress-bar"
+                  style={{
+                    background: p.accent,
+                  }}
+                />
+              )}
+            </button>
+          )
+        })}
       </div>
 
-      <div className="arg-showcase-split">
-        {/* Main Interactive Studio Screen */}
-        <div className="arg-showcase-monitor">
-          <div className="monitor-topbar">
-            <div className="monitor-window-controls" aria-hidden="true">
-              <span className="dot red" />
-              <span className="dot yellow" />
-              <span className="dot green" />
-            </div>
-            <div className="monitor-filename">
-              <span>demo_data.csv</span>
-              <span className="badge-ready">● Workspace Ready</span>
-            </div>
-            <div className="monitor-engine-tag">Python 3.11 · Local AST Sandbox</div>
+      {/* Main Feature Display Card — Outer container remains mounted without key re-mount flicker */}
+      <div className="workbench-card" style={{ '--pillar-accent': current.accent }}>
+        <div className="workbench-card-head">
+          <div className="workbench-badge" style={{ background: `${current.accent}22`, color: current.accent }}>
+            <span style={{ fontSize: '13px' }}>{current.emoji}</span>
+            <span>{current.badge}</span>
+          </div>
+          <button
+            type="button"
+            className="workbench-next-pill"
+            onClick={advanceToNext}
+            title={`Click to jump immediately to ${nextPillar.label}`}
+          >
+            <span className="next-pulse-dot" style={{ background: nextPillar.accent }} />
+            <span>Next window: {nextPillar.label}</span>
+            <ArrowRight size={11} className="next-arrow-slide" />
+            <span
+              key={activePillar}
+              className="workbench-next-pill-progress"
+              style={{ background: nextPillar.accent }}
+            />
+          </button>
+          <span className="workbench-engine-pill">Python 3.11 · Scipy &amp; Pandas</span>
+        </div>
+
+        <div className="workbench-body workbench-body-anim" key={activePillar}>
+          <div className="workbench-text-col">
+            <h3 className="workbench-title">{current.title}</h3>
+            <p className="workbench-desc">{current.desc}</p>
+            {current.metrics && (
+              <div className="workbench-telemetry-row">
+                {current.metrics.map((m, i) => (
+                  <div key={i} className="wb-metric-chip">
+                    <span className="wb-metric-k">{m.k}</span>
+                    <span className="wb-metric-v">{m.v}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {current.tags && (
+              <div className="workbench-tag-row">
+                {current.tags.map((t, i) => (
+                  <span key={i} className="wb-tag-pill" style={{ borderColor: `${current.accent}33`, color: '#cbd5e1' }}>
+                    <span className="wb-tag-dot" style={{ background: current.accent }} />
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="monitor-content">
-            {activeTab === 'analyst' && (
-              <div className="showcase-view-pane arg-fade-in">
-                {/* Chat Query Bar */}
-                <div className="showcase-prompt-bar">
-                  <div className="prompt-avatar user">U</div>
-                  <div className="prompt-text">
-                    "Compare monthly revenue across sales regions and flag any anomalies in performance."
-                  </div>
-                </div>
+          <div className="workbench-visual-col">
+            <ActiveWidget />
+          </div>
+        </div>
+      </div>
 
-                {/* Agent Execution Flow */}
-                <div className="showcase-agent-trace">
-                  <span className="trace-item planner">
-                    <span className="trace-dot" /> Planner: Route Dispatched
-                  </span>
-                  <span className="trace-arrow">→</span>
-                  <span className="trace-item engine">
-                    <span className="trace-dot" /> pandas.pivot_table · SciPy ANOVA
-                  </span>
-                  <span className="trace-arrow">→</span>
-                  <span className="trace-item visualizer">
-                    <span className="trace-dot" /> SVG Chart Render
-                  </span>
-                </div>
+      {/* Mobile Feature Switcher Controls */}
+      <div className="workbench-mobile-nav">
+        <button
+          type="button"
+          disabled={activePillar === Object.keys(pillars)[0]}
+          onClick={() => {
+            const keys = Object.keys(pillars)
+            const idx = keys.indexOf(activePillar)
+            if (idx > 0) {
+              setActivePillar(keys[idx - 1])
+            }
+          }}
+          className="wb-nav-btn"
+        >
+          &larr; Prev Feature
+        </button>
+        <span className="wb-nav-pill">
+          Feature {Object.keys(pillars).indexOf(activePillar) + 1} of {Object.keys(pillars).length}
+        </span>
+        <button
+          type="button"
+          disabled={activePillar === Object.keys(pillars)[Object.keys(pillars).length - 1]}
+          onClick={() => {
+            const keys = Object.keys(pillars)
+            const idx = keys.indexOf(activePillar)
+            if (idx < keys.length - 1) {
+              setActivePillar(keys[idx + 1])
+            }
+          }}
+          className="wb-nav-btn"
+        >
+          Next Feature &rarr;
+        </button>
+      </div>
+    </div>
+  )
+}
 
-                {/* Rendered Chart Result */}
-                <div className="showcase-chart-card">
-                  <div className="chart-header">
-                    <h5>Monthly Revenue by Region (USD Thousands)</h5>
-                    <span className="chart-pill">Bivariate Grouped Summary</span>
-                  </div>
-                  <div className="chart-bars-demo">
-                    <div className="bar-col">
-                      <span className="bar-val">$412K</span>
-                      <div className="bar-fill west" style={{ height: '88%' }} />
-                      <span className="bar-lbl">West</span>
-                    </div>
-                    <div className="bar-col">
-                      <span className="bar-val">$328K</span>
-                      <div className="bar-fill east" style={{ height: '70%' }} />
-                      <span className="bar-lbl">East</span>
-                    </div>
-                    <div className="bar-col">
-                      <span className="bar-val">$245K</span>
-                      <div className="bar-fill central" style={{ height: '52%' }} />
-                      <span className="bar-lbl">Central</span>
-                    </div>
-                    <div className="bar-col">
-                      <span className="bar-val">$172K</span>
-                      <div className="bar-fill north" style={{ height: '36%' }} />
-                      <span className="bar-lbl">North</span>
-                    </div>
-                  </div>
-                </div>
+// ── Dynamic Workspace in Action with Live Typing & Simulation ─────────────────
+export function WorkspaceShowcase({ onEnter, onDemo }) {
+  const [scenarioIdx, setScenarioIdx] = useState(0)
+  const [typedPrompt, setTypedPrompt] = useState('')
+  const [execStage, setExecStage] = useState('done') // 'typing' | 'planning' | 'computing' | 'rendering' | 'done'
+  const [narrativeText, setNarrativeText] = useState('')
+  const [isUserInteracting, setIsUserInteracting] = useState(false)
+  const rootRef = useRef(null)
+  const [inView, setInView] = useState(true)
+  const [reducedMotion] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+  )
 
-                {/* Grounded Narrative Card */}
-                <div className="showcase-ai-narrative">
-                  <div className="narrative-tag">
-                    <Sparkles size={13} />
-                    <span>GROUNDED TAKEAWAY</span>
-                  </div>
-                  <p>
-                    The Western region accounts for $412K (35.6% of gross revenue), outperforming Northern sales by 2.4×. 
-                    ANOVA testing confirms regional differences are statistically significant (F = 18.42, p &lt; 0.001). 
-                    Q3 showed an outlier spike of +44% in wholesale orders that drove the divergence.
-                  </p>
-                </div>
-              </div>
-            )}
+  /* Pause the simulation while off-screen: animation nobody watches is pure
+     battery cost. Mirrors the ProjectOverview intersection pattern. */
+  useEffect(() => {
+    const node = rootRef.current
+    if (!node || typeof IntersectionObserver === 'undefined') return undefined
+    const root = node.closest('.landing-scroll')
+    const observer = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { root: root || null, threshold: 0.15 }
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
 
-            {activeTab === 'dataset' && (
-              <div className="showcase-view-pane arg-fade-in">
-                {/* 4 Metric Cards */}
-                <div className="showcase-metric-cards">
-                  <div className="m-card">
-                    <span className="m-lbl">ROWS</span>
-                    <b className="m-val orange">891</b>
-                    <span className="m-sub">Parsed cleanly</span>
-                  </div>
-                  <div className="m-card">
-                    <span className="m-lbl">COLUMNS</span>
-                    <b className="m-val orange">12</b>
-                    <span className="m-sub">6 Logical types</span>
-                  </div>
-                  <div className="m-card">
-                    <span className="m-lbl">MISSING VALUES</span>
-                    <b className="m-val yellow">866</b>
-                    <span className="m-sub">Concentrated in 2 cols</span>
-                  </div>
-                  <div className="m-card">
-                    <span className="m-lbl">HEALTH SCORE</span>
-                    <b className="m-val green">74/100</b>
-                    <span className="m-sub">Ready for cleaning</span>
-                  </div>
-                </div>
+  const scenarios = [
+    {
+      id: 'revenue',
+      chip: 'Regional Revenue',
+      icon: '📊',
+      prompt: 'Compare monthly revenue across sales regions and flag any anomalies in performance.',
+      planner: 'Planner: Bivariate Grouped Summary & ANOVA',
+      engine: 'pandas.pivot_table() · SciPy ANOVA (F = 18.42, p < 0.001)',
+      visualizer: 'Dynamic SVG Bar Chart Render',
+      chartTitle: 'Monthly Revenue by Region (USD Thousands)',
+      bars: [
+        { label: 'West', val: '$412K', pct: '88%', color: '#38BDF8' },
+        { label: 'East', val: '$328K', pct: '70%', color: '#1D9E75' },
+        { label: 'Central', val: '$245K', pct: '52%', color: '#EF9F27' },
+        { label: 'North', val: '$172K', pct: '36%', color: '#E24B4A' },
+      ],
+      narrative: 'Western region accounts for $412K (35.6% of gross revenue), outperforming Northern sales by 2.4×. ANOVA testing confirms regional divergence is statistically significant (F = 18.42, p < 0.001). Q3 showed an outlier spike of +44% in wholesale orders.',
+    },
+    {
+      id: 'outliers',
+      chip: 'Fare Skew & Outliers',
+      icon: '🔍',
+      prompt: 'Scan Fare distribution for extreme tail skewness and calculate Tukey fences.',
+      planner: 'Planner: Univariate Distribution & Tukey Fencing',
+      engine: 'scipy.stats.skew(clean_fare) · IQR = Q3 - Q1 ($23.09)',
+      visualizer: 'Density Histogram & Boundary Overlay',
+      chartTitle: 'Fare Spread & Outlier Boundary ($65.63)',
+      bars: [
+        { label: '$0-$15', val: '471', pct: '92%', color: '#1D9E75' },
+        { label: '$15-$30', val: '200', pct: '48%', color: '#38BDF8' },
+        { label: '$30-$65', val: '102', pct: '28%', color: '#EF9F27' },
+        { label: '>$65 (Outliers)', val: '118', pct: '32%', color: '#E24B4A' },
+      ],
+      narrative: 'Heavy right-skew log-normal spread (skew: +4.78). 118 fares exceed the upper Tukey fence ($65.63), with maximum detected at $512.33. Recommend log1p transformation to stabilize variance before ML modeling.',
+    },
+    {
+      id: 'correlation',
+      chip: 'Missing & Correlation',
+      icon: '⚡',
+      prompt: 'Find missing values and compute Pearson correlation with survival rate.',
+      planner: 'Planner: Missingness Matrix & Pearson Association',
+      engine: 'df.isnull().sum() · df.corr(method="pearson")',
+      visualizer: 'Bivariate Correlation Heatmap Strip',
+      chartTitle: 'Predictive Association with Target Variable',
+      bars: [
+        { label: 'Sex (Cramer V)', val: '+0.54', pct: '85%', color: '#1D9E75' },
+        { label: 'Pclass (r)', val: '-0.34', pct: '62%', color: '#E24B4A' },
+        { label: 'Fare (r)', val: '+0.26', pct: '48%', color: '#38BDF8' },
+        { label: 'Age (r)', val: '-0.08', pct: '18%', color: '#EF9F27' },
+      ],
+      narrative: '177 missing values in Age (19.9%). Age has negligible correlation (-0.08) with survival, whereas Sex shows dominant predictive power (Cramer V: 0.54). Impute Age with median (28.0) to preserve sample size.',
+    },
+  ]
 
-                {/* Analysis Map */}
-                <div className="showcase-analysis-map">
-                  <span className="map-title">● ADAPTIVE ANALYSIS MAP:</span>
-                  <span className="map-pill num">5 Numeric</span>
-                  <span className="map-pill cat">3 Categorical</span>
-                  <span className="map-pill date">1 Datetime</span>
-                  <span className="map-pill text">3 Free Text</span>
-                </div>
+  const currentScenario = scenarios[scenarioIdx]
 
-                {/* Column Health Rows */}
-                <div className="showcase-health-table">
-                  <div className="health-row">
-                    <span className="col-id">Age</span>
-                    <span className="type-badge num">Numeric (Float)</span>
-                    <span className="null-stat yellow">177 missing (19.9%)</span>
-                    <span className="action-tag">Impute: Median (28.0)</span>
-                  </div>
-                  <div className="health-row">
-                    <span className="col-id">Fare</span>
-                    <span className="type-badge money">Currency</span>
-                    <span className="null-stat green">0 missing (0.0%)</span>
-                    <span className="action-tag warn">116 Outliers (Max $512.33)</span>
-                  </div>
-                  <div className="health-row">
-                    <span className="col-id">Embarked</span>
-                    <span className="type-badge cat">Categorical</span>
-                    <span className="null-stat yellow">2 missing (0.2%)</span>
-                    <span className="action-tag">Mode imputation ('S')</span>
-                  </div>
-                </div>
-              </div>
-            )}
+  // Typing animation & state machine (skipped off-screen / reduced-motion)
+  useEffect(() => {
+    if (!inView) return undefined
+    if (reducedMotion) {
+      setTypedPrompt(currentScenario.prompt)
+      setExecStage('done')
+      setNarrativeText(currentScenario.narrative)
+      return undefined
+    }
+    let cancelled = false
+    let typeTimer = null
+    let stageTimer = null
 
-            {activeTab === 'reports' && (
-              <div className="showcase-view-pane arg-fade-in">
-                <div className="showcase-reports-layout">
-                  <div className="report-hero-badge">
-                    <FileText size={16} />
-                    <span>AUTOMATED EXECUTIVE PDF REPORT ENGINE</span>
-                  </div>
-                  <h4>Complete Statistical Audit & Visual Dossier</h4>
-                  <p>
-                    Every computed histogram, bivariate relationship, correlation matrix, outlier summary, and AI narrative is assembled into a publication-ready PDF in seconds.
-                  </p>
+    const promptStr = currentScenario.prompt
+    setTypedPrompt('')
+    setExecStage('typing')
+    setNarrativeText('')
 
-                  <div className="report-cards-preview">
-                    <div className="rep-card">
-                      <div className="rep-card-icon"><BarChart3 size={20} /></div>
-                      <b>10+ High-Res Charts</b>
-                      <span>Vector-crisp SVG & PDF renderings</span>
-                    </div>
-                    <div className="rep-card">
-                      <div className="rep-card-icon"><Database size={20} /></div>
-                      <b>Data Hygiene Audit</b>
-                      <span>Missingness matrix, duplicates & skewness</span>
-                    </div>
-                    <div className="rep-card">
-                      <div className="rep-card-icon"><BrainCircuit size={20} /></div>
-                      <b>ML Feature Rankings</b>
-                      <span>Random forest & mutual info importances</span>
-                    </div>
-                  </div>
+    let charIdx = 0
+    const typeChar = () => {
+      if (cancelled) return
+      if (charIdx <= promptStr.length) {
+        setTypedPrompt(promptStr.slice(0, charIdx))
+        charIdx++
+        typeTimer = setTimeout(typeChar, 25)
+      } else {
+        // Prompt completed typing -> advance agent pipeline
+        stageTimer = setTimeout(() => {
+          if (cancelled) return
+          setExecStage('planning')
 
-                  <div className="report-download-preview">
-                    <div className="rep-file-pill">
-                      <FileText size={18} className="file-icon" />
-                      <div className="rep-meta">
-                        <b>argus_eda_report_demo_data.pdf</b>
-                        <span>14 Pages · Complete Statistical Profile · Generated Locally</span>
-                      </div>
-                    </div>
-                    <button className="rep-action-btn" onClick={onDemo}>
-                      <Download size={14} />
-                      <span>Generate with Demo Data</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+          stageTimer = setTimeout(() => {
+            if (cancelled) return
+            setExecStage('computing')
+
+            stageTimer = setTimeout(() => {
+              if (cancelled) return
+              setExecStage('rendering')
+
+              stageTimer = setTimeout(() => {
+                if (cancelled) return
+                setExecStage('done')
+                setNarrativeText(currentScenario.narrative)
+              }, 400)
+            }, 500)
+          }, 450)
+        }, 300)
+      }
+    }
+
+    typeTimer = setTimeout(typeChar, 200)
+
+    return () => {
+      cancelled = true
+      clearTimeout(typeTimer)
+      clearTimeout(stageTimer)
+    }
+  }, [scenarioIdx, inView, reducedMotion])
+
+  // Auto-cycle through scenarios every 9s unless user is interacting
+  useEffect(() => {
+    if (isUserInteracting || !inView || reducedMotion) return undefined
+    const interval = setInterval(() => {
+      setScenarioIdx((prev) => (prev + 1) % scenarios.length)
+    }, 9000)
+    return () => clearInterval(interval)
+  }, [isUserInteracting, scenarios.length])
+
+  return (
+    <div
+      ref={rootRef}
+      className="arg-workspace-showcase dynamic-sim"
+      onPointerEnter={() => setIsUserInteracting(true)}
+      onPointerLeave={() => setIsUserInteracting(false)}
+    >
+      {/* Interactive Scenario Chips */}
+      <div className="showcase-scenarios-strip" role="tablist">
+        <span className="strip-title">Try Live Analytical Queries:</span>
+        {scenarios.map((s, idx) => (
+          <button
+            key={s.id}
+            type="button"
+            className={`showcase-scenario-chip ${scenarioIdx === idx ? 'active' : ''}`}
+            onClick={() => {
+              setIsUserInteracting(true)
+              setScenarioIdx(idx)
+            }}
+          >
+            <span>{s.icon} {s.chip}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Main Interactive Studio Screen */}
+      <div className="arg-showcase-monitor">
+        {/* Top OS Window Bar */}
+        <div className="monitor-topbar">
+          <div className="monitor-window-controls" aria-hidden="true">
+            <span className="dot red" />
+            <span className="dot yellow" />
+            <span className="dot green" />
+          </div>
+          <div className="monitor-filename">
+            <span>titanic_master.csv</span>
+            <span className="badge-ready">● Python Kernel Active</span>
+          </div>
+          <div className="monitor-engine-tag">
+            <BrainCircuit size={11} className="spin-slow" />
+            <span>LangGraph Multi-Agent StateGraph v0.2</span>
           </div>
         </div>
 
-        {/* Interactive Side Selector Cards */}
-        <div className="arg-showcase-sidebar">
-          <button
-            type="button"
-            className={`arg-showcase-side-card ${activeTab === 'analyst' ? 'active' : ''}`}
-            onClick={() => setActiveTab('analyst')}
-          >
-            <div className="side-card-top">
-              <Bot size={18} className="side-icon" style={{ color: '#1d9e75' }} />
-              <h4>AI Analyst</h4>
-              <span className="side-indicator" />
+        {/* Studio Window Content */}
+        <div className="monitor-content">
+          {/* 1. Live Typing User Prompt Bar */}
+          <div className="showcase-prompt-bar">
+            <div className="prompt-avatar user">U</div>
+            <div className="prompt-text dynamic-typewriter">
+              <span>"{typedPrompt}"</span>
+              {execStage === 'typing' && <i className="type-caret" />}
             </div>
-            <p>Ask questions in natural language. Watch Argus pick the right tool, compute locally in Python, and describe the answers in plain English.</p>
-          </button>
+          </div>
 
-          <button
-            type="button"
-            className={`arg-showcase-side-card ${activeTab === 'dataset' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dataset')}
-          >
-            <div className="side-card-top">
-              <Database size={18} className="side-icon" style={{ color: '#378add' }} />
-              <h4>Dataset Health Scorecard</h4>
-              <span className="side-indicator" />
+          {/* Dedicated LangGraph Multi-Agent Orchestration Bar */}
+          <div className="showcase-langgraph-bar">
+            <div className="lg-bar-left">
+              <BrainCircuit size={13} style={{ color: '#38bdf8' }} />
+              <strong>LangGraph StateGraph:</strong>
+              <span className="lg-graph-nodes">START &rarr; Planner &rarr; AST Tool &rarr; Explainer &rarr; END</span>
             </div>
-            <p>Instant ingestion profiling: automated logical type sniffing, missingness penalty index, and IQR outlier boundaries at a glance.</p>
-          </button>
-
-          <button
-            type="button"
-            className={`arg-showcase-side-card ${activeTab === 'reports' ? 'active' : ''}`}
-            onClick={() => setActiveTab('reports')}
-          >
-            <div className="side-card-top">
-              <FileText size={18} className="side-icon" style={{ color: '#7f77dd' }} />
-              <h4>Explore & Reports</h4>
-              <span className="side-indicator" />
+            <div className="lg-bar-right">
+              <span className={`lg-state-tag ${execStage}`}>
+                <span className="pulse-dot" /> NODE: {execStage.toUpperCase()}
+              </span>
             </div>
-            <p>Examine univariate and bivariate charts by hand, fine-tune aggregation methods, and export comprehensive PDF reports in one click.</p>
-          </button>
+          </div>
 
-          <div className="arg-showcase-live-action">
-            <button className="arg-btn-primary full-width" onClick={onDemo}>
-              <Zap size={16} />
-              <span>Launch Live Workspace Now</span>
+          {/* 2. Step-by-Step Agent Pipeline Trace */}
+          <div className="showcase-agent-trace">
+            <div className={`trace-item planner ${execStage !== 'typing' ? 'active pulse' : ''}`}>
+              <span className="trace-role-chip">NODE 1: PLANNER</span>
+              <span className="trace-text"><span className="trace-dot" /> {currentScenario.planner}</span>
+            </div>
+            <span className="trace-arrow">&rarr;</span>
+            <div className={`trace-item engine ${['computing', 'rendering', 'done'].includes(execStage) ? 'active pulse' : ''}`}>
+              <span className="trace-role-chip">NODE 2: REPL TOOL</span>
+              <span className="trace-text"><span className="trace-dot" /> {currentScenario.engine}</span>
+            </div>
+            <span className="trace-arrow">&rarr;</span>
+            <div className={`trace-item visualizer ${['rendering', 'done'].includes(execStage) ? 'active pulse' : ''}`}>
+              <span className="trace-role-chip">NODE 3: EXPLAINER</span>
+              <span className="trace-text"><span className="trace-dot" /> {currentScenario.visualizer}</span>
+            </div>
+          </div>
+
+          {/* 3. Rendered Dynamic Chart */}
+          <div className={`showcase-chart-card ${['rendering', 'done'].includes(execStage) ? 'visible' : 'pending'}`}>
+            <div className="chart-header">
+              <h5>{currentScenario.chartTitle}</h5>
+              <span className="chart-pill">Deterministic Output</span>
+            </div>
+            <div className="chart-bars-demo">
+              {currentScenario.bars.map((b) => (
+                <div key={b.label} className="bar-col">
+                  <span className="bar-val">{b.val}</span>
+                  <div
+                    className="bar-fill"
+                    style={{
+                      height: ['rendering', 'done'].includes(execStage) ? b.pct : '4px',
+                      background: b.color,
+                      transition: 'height 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+                    }}
+                  />
+                  <span className="bar-lbl">{b.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 4. Grounded AI Takeaway Box */}
+          <div className={`showcase-ai-narrative ${execStage === 'done' ? 'visible' : 'pending'}`}>
+            <div className="narrative-tag">
+              <Sparkles size={13} />
+              <span>LANGGRAPH EXPLAINER SYNTHESIS · 0 HALLUCINATIONS</span>
+            </div>
+            <p>{narrativeText || 'Synthesizing verified Python kernel output...'}</p>
+          </div>
+        </div>
+
+        {/* Monitor Footer Action Strip */}
+        <div className="monitor-footer-strip">
+          <div className="monitor-footer-left">
+            <span className="engine-status-dot" />
+            <span>LangGraph Multi-Agent Engine · Ephemeral In-Memory Python Sandbox</span>
+          </div>
+          <div className="monitor-footer-actions">
+            <button className="arg-btn-primary workspace-cta-btn" onClick={onEnter}>
+              <span>Upload your dataset &rarr;</span>
             </button>
-            <span className="live-action-sub">Pre-loaded with Titanic demo dataset · No login required</span>
+            <button className="arg-btn-secondary workspace-demo-btn" onClick={onDemo}>
+              <Zap size={13} />
+              <span>Try Live Demo</span>
+            </button>
           </div>
         </div>
       </div>
@@ -664,7 +1400,7 @@ export function ArgusFooter() {
             <ul className="footer-links">
               <li><a href="#top">Overview</a></li>
               <li><a href="#features">Features</a></li>
-              <li><a href="#how-it-works">How It Works</a></li>
+              <li><a href="#pipeline">Pipeline</a></li>
               <li><a href="#gallery">Workspace Studio</a></li>
               <li><a href="#about">Architecture</a></li>
               <li><a href="#faq">FAQ</a></li>
@@ -690,6 +1426,28 @@ export function ArgusFooter() {
           <button className="footer-back-to-top" onClick={scrollToTop} aria-label="Back to top">
             <span>Back to top ↑</span>
           </button>
+        </div>
+
+        {/* Dedicated Mobile Footer Strip */}
+        <div className="arg-mobile-footer-strip">
+          <div className="mobile-footer-brand">
+            <span className="brand-dot green" />
+            <span>Argus EDA · Local Python AST Engine</span>
+          </div>
+          <div className="mobile-footer-links">
+            <a href="#top">Top</a>
+            <span>•</span>
+            <a href="#overview">Intel</a>
+            <span>•</span>
+            <a href="#features">Features</a>
+            <span>•</span>
+            <a href="#gallery">Studio</a>
+            <span>•</span>
+            <a href="#faq">FAQ</a>
+          </div>
+          <div className="mobile-footer-copy">
+            <span>&copy; {new Date().getFullYear()} Argus. Built by Anuj Kesharwani.</span>
+          </div>
         </div>
       </div>
     </footer>

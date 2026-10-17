@@ -15,14 +15,33 @@ import re
 import textwrap
 from datetime import datetime
 
-try:
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.decomposition import PCA
-    from sklearn.cluster import KMeans
-    from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-    _has_sklearn = True
-except ImportError:
-    _has_sklearn = False
+_sklearn_cache = None
+
+def _get_sklearn():
+    global _sklearn_cache
+    if _sklearn_cache is None:
+        try:
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.decomposition import PCA
+            from sklearn.cluster import KMeans
+            from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+            _sklearn_cache = {
+                "StandardScaler": StandardScaler,
+                "PCA": PCA,
+                "KMeans": KMeans,
+                "RandomForestClassifier": RandomForestClassifier,
+                "RandomForestRegressor": RandomForestRegressor,
+                "has": True,
+            }
+        except ImportError:
+            _sklearn_cache = {"has": False}
+    return _sklearn_cache
+
+class _LazySklearnBool:
+    def __bool__(self):
+        return bool(_get_sklearn().get("has", False))
+
+_has_sklearn = _LazySklearnBool()
 
 from backend.models.analysis import AnalysisType, VisualizationType
 from backend.analysis.column_types import (
@@ -1962,10 +1981,13 @@ def run_multivariate_analysis(df: pd.DataFrame, target: Optional[str] = None, n_
             elif len(X) < 5:
                 warnings_list.append(f"Only {len(X)} complete rows — too few to fit a model.")
             else:
+                sk = _get_sklearn()
+                RFC = sk.get("RandomForestClassifier")
+                RFR = sk.get("RandomForestRegressor")
                 model = (
-                    RandomForestClassifier(n_estimators=100, random_state=42)
+                    RFC(n_estimators=100, random_state=42)
                     if task == "classification" else
-                    RandomForestRegressor(n_estimators=100, random_state=42)
+                    RFR(n_estimators=100, random_state=42)
                 )
                 model.fit(X, y)
                 importances = pd.Series(model.feature_importances_, index=X.columns) \
@@ -1992,6 +2014,10 @@ def run_multivariate_analysis(df: pd.DataFrame, target: Optional[str] = None, n_
         # Use all supported predictor types consistently and exclude the target.
         X, cluster_encoding, cluster_skipped = _build_design_matrix(df, target=target)
         if len(X) >= 2 and X.shape[1] >= 2 and len(X.drop_duplicates()) >= 2:
+            sk = _get_sklearn()
+            StandardScaler = sk.get("StandardScaler")
+            PCA = sk.get("PCA")
+            KMeans = sk.get("KMeans")
             scaler = StandardScaler()
             X_scaled = scaler.fit_transform(X)
             pca = PCA(n_components=2, random_state=42)
@@ -2230,10 +2256,13 @@ def run_feature_importance(df: pd.DataFrame, target: str) -> dict:
     if len(X) < 5:
         return {"error": f"Only {len(X)} complete rows — too few to fit a model.", "target": target}
 
+    sk = _get_sklearn()
+    RFC = sk.get("RandomForestClassifier")
+    RFR = sk.get("RandomForestRegressor")
     if task == "classification":
-        model = RandomForestClassifier(n_estimators=100, random_state=42)
+        model = RFC(n_estimators=100, random_state=42)
     else:
-        model = RandomForestRegressor(n_estimators=100, random_state=42)
+        model = RFR(n_estimators=100, random_state=42)
     model.fit(X, y)
 
     importances = pd.Series(model.feature_importances_, index=X.columns).sort_values(ascending=False)

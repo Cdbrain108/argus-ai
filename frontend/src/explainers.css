@@ -1,0 +1,1715 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   ARGUS landing explainers.
+
+   Styles for the animated "how it works" layer in components/ArgusExplainers.jsx,
+   plus — at the bottom of this file — the fit corrections that let every landing
+   phase land on a phone screen without clipping.
+
+   Loaded last (main.jsx) on purpose: theme.css settles the landing identity with
+   a lot of `!important`, and the final block here has to win against it rather
+   than be threaded through 1,500 lines of existing mobile overrides.
+
+   Conventions:
+   * `.ax-` namespace throughout, so nothing here can collide with `.arg-`.
+   * Mobile first. Every size is a `clamp()` or scales at a breakpoint; no
+     fixed pixel widths that can overflow a 320px screen.
+   * Only `transform`, `opacity` and `stroke-dashoffset` animate.
+   * A `--d` custom property carries each stagger, so a sequence is one inline
+     value per element rather than a timer per element.
+   ───────────────────────────────────────────────────────────────────────────*/
+
+/* ── Shared primitives ───────────────────────────────────────────────────── */
+
+.ax-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.14);
+  border: 1px solid rgba(249, 115, 22, 0.28);
+  color: var(--orange-soft);
+  font-size: clamp(9.5px, 2.4vw, 10.5px);
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  white-space: nowrap;
+}
+
+.ax-note {
+  display: block;
+  font-size: clamp(10.5px, 2.5vw, 11.5px);
+  line-height: 1.5;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.ax-step-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ax-step-btn,
+.ax-replay {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-body);
+  font-size: 11.5px;
+  font-weight: 700;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease), transform 0.15s var(--ease);
+}
+
+.ax-step-btn:hover,
+.ax-replay:hover {
+  border-color: rgba(249, 115, 22, 0.5);
+  background: rgba(249, 115, 22, 0.12);
+}
+
+.ax-step-btn:active,
+.ax-replay:active { transform: scale(0.96); }
+
+.ax-step-count {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  min-width: 44px;
+  text-align: center;
+}
+
+/* Every widget shares one shell so the sections read as one system. */
+.ax-flow,
+.ax-graph,
+.ax-gate,
+.ax-lab,
+.ax-race,
+.ax-proof {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: clamp(10px, 1.8vh, 18px);
+  padding: clamp(12px, 2.6vw, 20px);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(120% 90% at 50% -20%, rgba(249, 115, 22, 0.07), transparent 60%),
+    var(--card-alt);
+  box-sizing: border-box;
+  box-shadow: 0 18px 44px -28px rgba(0, 0, 0, 0.9);
+}
+
+/* ── 1. Flow map ─────────────────────────────────────────────────────────── */
+
+.ax-flow-rail {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.ax-rail-line { display: none; }
+
+.ax-rail-node {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 6px 7px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-muted);
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s var(--ease), background 0.3s var(--ease), color 0.3s var(--ease), transform 0.3s var(--ease);
+}
+
+.ax-tab-fill-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2.5px;
+  width: 0%;
+  animation: axRailFillProgress 3.6s linear forwards;
+  box-shadow: 0 0 10px currentColor;
+  border-radius: 2px;
+  pointer-events: none;
+}
+@keyframes axRailFillProgress {
+  0% { width: 0%; opacity: 0.7; }
+  90% { width: 95%; opacity: 1; }
+  100% { width: 100%; opacity: 1; }
+}
+
+.ax-rail-badge {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  transition: background 0.3s var(--ease), color 0.3s var(--ease), transform 0.3s var(--ease);
+}
+
+.ax-rail-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ax-rail-text em {
+  font-style: normal;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+
+.ax-rail-text b {
+  font-size: clamp(10.5px, 2.8vw, 12px);
+  font-weight: 700;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ax-rail-node.is-past {
+  color: var(--text-body);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.ax-rail-node.is-past .ax-rail-badge {
+  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent);
+}
+
+.ax-rail-node.is-active {
+  color: #fff;
+  border-color: rgba(249, 115, 22, 0.5);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: rgba(249, 115, 22, 0.1);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  transform: translateY(-2px);
+}
+
+.ax-rail-node.is-active .ax-rail-badge {
+  background: var(--accent);
+  color: #0a0e1a;
+  transform: scale(1.06);
+}
+
+.ax-flow-panel {
+  display: grid;
+  gap: clamp(10px, 2vw, 16px);
+  padding: clamp(11px, 2.4vw, 18px);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border));
+  background:
+    linear-gradient(150deg, rgba(249, 115, 22, 0.07), transparent 62%),
+    rgba(10, 14, 26, 0.72);
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent 62%),
+    rgba(10, 14, 26, 0.72);
+  animation: ax-rise 0.5s var(--ease) both;
+}
+
+.ax-flow-copy { display: grid; gap: 7px; min-width: 0; align-content: start; }
+
+.ax-flow-step-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ax-flow-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  color: var(--accent);
+}
+
+.ax-flow-next-preview,
+.ax-graph-next-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6.5px;
+  padding: 3px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+}
+
+.ax-next-pulse-dot,
+.ax-pulse-ring {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+  animation: nextDotPulse 1.4s ease-in-out infinite;
+}
+
+.ax-next-arrow {
+  animation: nextArrowSlide 1.3s ease-in-out infinite;
+  color: #e2e8f0;
+}
+
+.ax-flow-copy h3 {
+  margin: 0;
+  font-size: clamp(14.5px, 4.2vw, 21px);
+  font-weight: 800;
+  line-height: 1.26;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.ax-flow-copy p {
+  margin: 0;
+  font-size: clamp(12px, 3.2vw, 13.5px);
+  line-height: 1.62;
+  color: var(--text-body);
+}
+
+.ax-handover {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 7px;
+  margin-top: 2px;
+}
+
+.ax-handover-cell {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 9px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ax-handover-cell.is-out {
+  border-color: rgba(249, 115, 22, 0.32);
+  border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+  background: rgba(249, 115, 22, 0.09);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.ax-handover-cell em {
+  font-style: normal;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+
+.ax-handover-cell b {
+  font-size: clamp(10.5px, 2.8vw, 12px);
+  font-weight: 700;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.ax-handover-arrow { align-self: center; color: var(--accent); flex: none; }
+
+.ax-receipt {
+  display: block;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.3);
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: clamp(9.5px, 2.5vw, 11px);
+  line-height: 1.5;
+  color: var(--green-soft);
+  overflow-wrap: anywhere;
+}
+
+.ax-flow-visual {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  min-height: clamp(120px, 20vh, 190px);
+  padding: clamp(9px, 2vw, 14px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.26);
+}
+
+.ax-flow-foot {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+/* Stage minis */
+.ax-mini { width: 100%; min-width: 0; }
+
+.ax-mini-ingest { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+
+.ax-mini-ingest li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 7px;
+  animation: ax-rise 0.45s var(--ease) var(--d, 0ms) both;
+}
+
+.ax-mini-ingest code {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: clamp(10px, 2.6vw, 11.5px);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-mini-arrow { color: var(--orange); flex: none; }
+
+.ax-mini-type {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  color: var(--accent);
+  font-size: clamp(9.5px, 2.4vw, 10.5px);
+  font-weight: 800;
+  white-space: nowrap;
+  animation: ax-pop 0.4s var(--ease) var(--d, 0ms) both;
+}
+
+.ax-mini-profile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(10px, 3vw, 16px);
+}
+
+.ax-mini-ring { position: relative; width: clamp(68px, 18vw, 86px); aspect-ratio: 1; }
+.ax-mini-ring svg { width: 100%; height: 100%; display: block; }
+.ax-ring-track { fill: none; stroke: rgba(255, 255, 255, 0.08); stroke-width: 8; }
+
+.ax-ring-fill {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dashoffset: var(--from);
+  animation: ax-ring 1.25s var(--ease) 0.15s both;
+}
+
+.ax-mini-ring b {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: clamp(18px, 5vw, 23px);
+  font-weight: 900;
+  color: var(--green-soft);
+}
+
+.ax-mini-profile ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; min-width: 0; }
+
+.ax-mini-profile li { display: grid; gap: 4px; min-width: 0; }
+
+.ax-mini-profile li > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: clamp(10px, 2.6vw, 11.5px);
+  color: var(--text-muted);
+}
+
+.ax-mini-profile li > span b { color: var(--text); font-weight: 700; }
+
+.ax-mini-track {
+  display: block;
+  height: 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.ax-mini-track > i {
+  display: block;
+  height: 100%;
+  width: var(--w);
+  border-radius: 4px;
+  transform-origin: left center;
+  animation: ax-grow-x 0.8s var(--ease) var(--d, 0ms) both;
+}
+
+.ax-mini-plan { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+
+.ax-mini-plan li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+  animation: ax-rise 0.4s var(--ease) var(--d, 0ms) both;
+}
+
+.ax-mini-plan code {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: clamp(9.5px, 2.5vw, 11px);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-plan-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.ax-mini-plan li.chosen {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.ax-mini-plan li.chosen code { color: #cfefff; }
+.ax-mini-plan li.chosen .ax-plan-dot { background: var(--cyan); box-shadow: 0 0 9px var(--cyan); }
+
+.ax-mini-plan li.chosen em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--cyan);
+  white-space: nowrap;
+}
+
+.ax-mini-compute { display: grid; gap: 5px; }
+
+.ax-mini-compute code {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: clamp(9.5px, 2.5vw, 11px);
+  line-height: 1.55;
+  color: var(--text-body);
+  overflow-wrap: anywhere;
+  animation: ax-rise 0.4s var(--ease) var(--d, 0ms) both;
+}
+
+.ax-mini-compute code:first-child { color: var(--cyan); }
+.ax-mini-compute code:nth-child(2) { color: var(--green-soft); font-weight: 700; }
+.ax-mini-compute code:nth-child(3) { color: var(--text-dim); }
+
+.ax-mini-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  justify-self: start;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(29, 158, 117, 0.16);
+  border: 1px solid rgba(29, 158, 117, 0.4);
+  color: var(--green-soft);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  animation: ax-pop 0.4s var(--ease) var(--d, 0ms) both;
+}
+
+.ax-mini-chart { display: grid; gap: 9px; }
+
+.ax-mini-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(4px, 1.4vw, 8px);
+  height: clamp(62px, 11vh, 92px);
+}
+
+.ax-mini-bars > i {
+  flex: 1;
+  height: var(--h);
+  min-width: 0;
+  border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(180deg, var(--yellow), rgba(239, 159, 39, 0.45));
+  transform: scaleY(0);
+  transform-origin: bottom center;
+  animation: ax-grow-y 0.65s var(--ease) var(--d, 0ms) both;
+}
+
+.ax-mini-spark { width: 100%; height: auto; display: block; }
+
+.ax-spark-path {
+  stroke-dasharray: 420;
+  stroke-dashoffset: 420;
+  animation: ax-draw 1.3s var(--ease) 0.35s both;
+}
+
+.ax-mini-explain { display: grid; gap: 8px; }
+
+.ax-mini-explain p {
+  margin: 0;
+  font-size: clamp(11.5px, 3vw, 13px);
+  line-height: 1.68;
+  color: var(--text-body);
+}
+
+.ax-mini-explain mark {
+  display: inline-block;
+  margin: 0 1px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgba(249, 115, 22, 0.18);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  color: var(--orange-soft);
+  font-size: 0.92em;
+  font-weight: 800;
+  animation: ax-pop 0.45s var(--ease) var(--d, 0ms) both;
+}
+
+.ax-mini-cite {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--green-soft);
+}
+
+@media (min-width: 620px) {
+  .ax-flow-rail { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+  .ax-rail-node { flex-direction: column; align-items: flex-start; min-height: 58px; padding: 8px 10px; }
+
+  .ax-rail-line {
+    display: block;
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: -7px;
+    height: 2px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+  }
+
+  .ax-rail-line > i {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.55s var(--ease), background 0.35s var(--ease);
+  }
+}
+
+@media (min-width: 901px) {
+  .ax-flow-panel { grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr); align-items: stretch; }
+  .ax-flow-foot { grid-template-columns: minmax(0, 1fr) auto; justify-items: start; align-items: center; }
+  .ax-flow-foot .ax-note { text-align: left; }
+}
+
+/* ── 2. Agent graph ──────────────────────────────────────────────────────── */
+
+.ax-gate-head,
+.ax-lab-head,
+.ax-race-head,
+.ax-proof-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ax-graph-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+}
+
+.ax-graph-head > :first-child {
+  justify-self: start;
+}
+
+.ax-graph-head .ax-graph-next-pill {
+  justify-self: center;
+  margin: 0 auto;
+}
+
+.ax-graph-head > :last-child {
+  justify-self: end;
+}
+
+@media (max-width: 680px) {
+  .ax-graph-head {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    row-gap: 8px;
+  }
+  .ax-graph-head > :first-child {
+    grid-column: 1;
+    justify-self: start;
+  }
+  .ax-graph-head > :last-child {
+    grid-column: 2;
+    justify-self: end;
+  }
+  .ax-graph-head .ax-graph-next-pill {
+    grid-column: 1 / -1;
+    justify-self: center;
+    margin: 2px auto 0;
+  }
+}
+
+.ax-graph-hop {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.ax-retry-flag {
+  font-style: normal;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(226, 75, 74, 0.16);
+  border: 1px solid rgba(226, 75, 74, 0.4);
+  color: #f9a8a7;
+  letter-spacing: 0.06em;
+}
+
+.ax-graph-canvas { width: 100%; min-width: 0; }
+
+.ax-graph-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+/* The portrait layout is drawn for a phone. Letting it scale up to a 700px
+   column would render 25px node labels, so it is capped and centred instead. */
+.ax-graph-svg.is-column {
+  max-width: 440px;
+  margin-inline: auto;
+}
+
+.ax-edge-base {
+  stroke: rgba(255, 255, 255, 0.13);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.ax-edge.is-retry .ax-edge-base {
+  stroke: rgba(226, 75, 74, 0.3);
+  stroke-dasharray: 6 7;
+}
+
+/* The travelling dash is the packet. A long gap and a short dash on a path the
+   length of the edge reads as one pulse crossing it. */
+.ax-edge-pulse {
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-dasharray: 20 140;
+  animation: ax-dash-flow 1.15s linear infinite !important;
+  filter: drop-shadow(0 0 6px var(--accent, #38bdf8));
+}
+
+.ax-node-box {
+  fill: rgba(17, 21, 36, 0.95);
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 1.4;
+  transition: fill 0.3s var(--ease), stroke 0.3s var(--ease);
+}
+
+.ax-node-label {
+  fill: var(--text-body);
+  font-weight: 800;
+  text-anchor: middle;
+  dominant-baseline: central;
+  transition: fill 0.3s var(--ease);
+}
+
+.ax-node-sub {
+  fill: var(--text-dim);
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.ax-node.is-terminal .ax-node-box { fill: rgba(255, 255, 255, 0.05); }
+.ax-node.is-terminal .ax-node-label { font-size: 11px; letter-spacing: 0.1em; fill: var(--text-muted); }
+
+.ax-node.is-active { animation: ax-node-pop 0.45s var(--ease) both; }
+
+.ax-node.is-active .ax-node-box {
+  fill: rgba(56, 189, 248, 0.2);
+  fill: color-mix(in srgb, var(--node) 20%, rgba(17, 21, 36, 0.95));
+  stroke: var(--node);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--node) 55%, transparent));
+}
+
+.ax-node.is-active .ax-node-label { fill: #fff; }
+
+.ax-node.is-active .ax-node-sub {
+  fill: var(--text-muted);
+  fill: color-mix(in srgb, var(--node) 80%, #fff);
+}
+
+.ax-graph-say {
+  display: grid;
+  gap: 7px;
+  padding: clamp(10px, 2.4vw, 14px);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: rgba(0, 0, 0, 0.26);
+  background: color-mix(in srgb, var(--accent) 8%, rgba(0, 0, 0, 0.26));
+  animation: ax-rise 0.4s var(--ease) both;
+}
+
+.ax-say-node {
+  justify-self: start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.ax-graph-say p {
+  margin: 0;
+  font-size: clamp(11.5px, 3vw, 13.5px);
+  line-height: 1.62;
+  color: var(--text-body);
+}
+
+.ax-graph-dots { display: flex; justify-content: center; gap: 7px; flex-wrap: wrap; }
+
+.ax-dot {
+  width: 22px;
+  height: 5px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  transition: background 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+.ax-dot.is-retry { background: rgba(226, 75, 74, 0.34); }
+.ax-dot.is-active { background: var(--orange); transform: scaleY(1.6); }
+
+@media (min-width: 901px) {
+  .ax-graph-say { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; }
+}
+
+/* ── 3. AST gate ─────────────────────────────────────────────────────────── */
+
+.ax-gate { --gate: var(--green); }
+.ax-gate.is-blocked { --gate: var(--red); }
+
+.ax-gate-tally {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.ax-gate-tally .ok { color: var(--green-soft); }
+.ax-gate-tally .no { color: #f9a8a7; }
+.ax-gate-tally > i { width: 1px; height: 11px; background: rgba(255, 255, 255, 0.16); }
+
+.ax-gate-stage {
+  display: grid;
+  gap: 9px;
+  padding: clamp(11px, 2.6vw, 16px);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--gate) 34%, var(--border));
+  background: rgba(0, 0, 0, 0.3);
+  background: color-mix(in srgb, var(--gate) 9%, rgba(0, 0, 0, 0.3));
+  animation: ax-rise 0.4s var(--ease) both;
+}
+
+.ax-gate-code {
+  display: block;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: clamp(10.5px, 2.9vw, 13px);
+  line-height: 1.55;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.ax-gate.is-blocked .ax-gate-code { text-decoration: line-through; text-decoration-color: rgba(226, 75, 74, 0.6); }
+
+.ax-gate-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: clamp(9px, 2.4vw, 10px);
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  animation: ax-stamp 0.45s var(--ease) both;
+}
+
+.ax-gate-stamp.ok {
+  background: rgba(29, 158, 117, 0.18);
+  border: 1px solid rgba(29, 158, 117, 0.5);
+  color: var(--green-soft);
+}
+
+.ax-gate-stamp.no {
+  background: rgba(226, 75, 74, 0.18);
+  border: 1px solid rgba(226, 75, 74, 0.52);
+  color: #f9a8a7;
+}
+
+.ax-gate-why {
+  margin: 0;
+  font-size: clamp(11px, 2.9vw, 12.5px);
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.ax-gate-queue {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.ax-gate-queue > button {
+  width: 18px;
+  height: 14px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  transition: transform 0.25s var(--ease);
+}
+
+/* The hit target is 14px tall for a thumb; the visible mark is the 4px bar. */
+.ax-gate-queue > button::after {
+  content: '';
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  transition: background 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+.ax-gate-queue > button.ok.is-active::after { background: var(--green); transform: scaleY(1.8); }
+.ax-gate-queue > button.no.is-active::after { background: var(--red); transform: scaleY(1.8); }
+
+.ax-gate-rules { display: grid; gap: 7px; }
+
+.ax-gate-rule {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.025);
+  animation: ax-rise 0.45s var(--ease) var(--d, 0ms) both;
+}
+
+.ax-gate-rule > svg { flex: none; margin-top: 1px; color: var(--green); }
+.ax-gate-rule > div { display: grid; gap: 1px; min-width: 0; }
+
+.ax-gate-rule b {
+  font-size: clamp(10.5px, 2.8vw, 12px);
+  font-weight: 800;
+  color: var(--text);
+}
+
+.ax-gate-rule span {
+  font-size: clamp(10px, 2.6vw, 11.5px);
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+@media (min-width: 620px) {
+  .ax-gate-rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ── 4. Chart lab ────────────────────────────────────────────────────────── */
+
+.ax-lab-count {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.ax-lab-stage { display: grid; gap: clamp(10px, 2vw, 16px); }
+
+.ax-lab-figure {
+  padding: clamp(8px, 2vw, 14px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.3);
+  animation: ax-fade 0.4s var(--ease) both;
+}
+
+.ax-fig { width: 100%; height: auto; display: block; }
+
+.ax-fig-axis { stroke: rgba(255, 255, 255, 0.16); stroke-width: 1; }
+
+.ax-fig-bar {
+  transform: scaleY(0);
+  animation: ax-grow-y 0.6s var(--ease) var(--d, 0ms) both;
+}
+
+.ax-fig-line {
+  stroke-dasharray: 560;
+  stroke-dashoffset: 560;
+  animation: ax-draw 1.35s var(--ease) 0.25s both;
+}
+
+.ax-fig-area { opacity: 0; animation: ax-fade 0.9s var(--ease) 0.5s both; }
+
+.ax-fig-point {
+  fill: var(--cyan);
+  opacity: 0.88;
+  animation: ax-pop 0.4s var(--ease) var(--d, 0ms) both;
+}
+
+/* Feature ranking bars grow from the axis, not from the middle. */
+.ax-fig-hbar {
+  transform: scaleX(0);
+  animation: ax-grow-x 0.6s var(--ease) var(--d, 0ms) both;
+}
+
+.ax-fig-centroid { opacity: 0; animation: ax-fade 0.5s var(--ease) var(--d, 0ms) both; }
+
+.ax-fig-cell {
+  fill: var(--purple);
+  opacity: 0;
+  transform: scale(0.4);
+  animation: ax-cell-in 0.5s var(--ease) var(--d, 0ms) both;
+}
+
+.ax-fig-strip { fill: rgba(255, 255, 255, 0.07); }
+
+.ax-fig-strip-fill,
+.ax-fig-strip-ok {
+  transform: scaleX(0);
+  animation: ax-grow-x 0.6s var(--ease) var(--d, 0ms) both;
+}
+
+.ax-fig-strip-ok { fill: rgba(29, 158, 117, 0.55); }
+
+.ax-fig-tick { fill: var(--text-dim); font-size: 9.5px; font-weight: 700; dominant-baseline: central; }
+.ax-fig-note { fill: var(--text-muted); font-size: 9.5px; font-weight: 700; text-anchor: middle; }
+
+.ax-lab-copy { display: grid; gap: 6px; align-content: start; min-width: 0; }
+
+.ax-lab-picks {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  justify-self: start;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.ax-lab-copy h4 {
+  margin: 0;
+  font-size: clamp(14px, 4vw, 18px);
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.015em;
+}
+
+.ax-lab-copy p {
+  margin: 0;
+  font-size: clamp(11.5px, 3vw, 13px);
+  line-height: 1.62;
+  color: var(--text-body);
+}
+
+.ax-lab-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.ax-lab-tab {
+  min-height: 32px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  font-size: clamp(10px, 2.6vw, 11.5px);
+  font-weight: 700;
+  white-space: nowrap;
+  transition: border-color 0.2s var(--ease), color 0.2s var(--ease), background 0.2s var(--ease);
+}
+
+.ax-lab-tab:hover { border-color: rgba(255, 255, 255, 0.28); color: var(--text-body); }
+.ax-lab-tab.is-active { background: rgba(255, 255, 255, 0.07); font-weight: 800; }
+
+@media (min-width: 901px) {
+  .ax-lab-stage { grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr); align-items: center; }
+}
+
+/* ── 5. Speed race ───────────────────────────────────────────────────────── */
+
+.ax-race-lanes { display: grid; gap: clamp(10px, 2vw, 16px); }
+
+.ax-lane {
+  display: grid;
+  gap: 9px;
+  align-content: start;
+  padding: clamp(11px, 2.4vw, 16px);
+  border-radius: 13px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.26);
+}
+
+.ax-lane.is-argus {
+  border-color: rgba(249, 115, 22, 0.34);
+  background: linear-gradient(155deg, rgba(249, 115, 22, 0.1), transparent 60%), rgba(0, 0, 0, 0.26);
+}
+
+.ax-lane-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+
+.ax-lane-head b {
+  font-size: clamp(12px, 3.2vw, 14px);
+  font-weight: 800;
+  color: var(--text);
+}
+
+.ax-lane-clock {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: clamp(16px, 4.6vw, 22px);
+  font-weight: 900;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ax-lane-clock.is-fast { color: var(--orange); }
+
+.ax-lane-track {
+  height: 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.ax-lane-track > i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: 4px;
+  background: rgba(156, 163, 175, 0.55);
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 0.12s linear;
+}
+
+.ax-lane-track > i.is-fast { background: linear-gradient(90deg, var(--orange), var(--yellow)); }
+
+.ax-lane-steps,
+.ax-lane-outputs { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+
+.ax-lane-steps li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: clamp(10.5px, 2.8vw, 12px);
+  color: var(--text-dim);
+  transition: color 0.3s var(--ease);
+}
+
+.ax-lane-mark {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  transition: background 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+
+.ax-lane-steps li em {
+  font-style: normal;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.ax-lane-steps li.running { color: var(--text-body); }
+.ax-lane-steps li.running .ax-lane-mark { border-color: var(--yellow); background: rgba(239, 159, 39, 0.4); animation: ax-blink 1s var(--ease) infinite; }
+.ax-lane-steps li.done { color: var(--text-muted); }
+.ax-lane-steps li.done .ax-lane-mark { border-color: rgba(156, 163, 175, 0.5); background: rgba(156, 163, 175, 0.5); }
+.ax-lane-steps li.done .ax-lane-label { text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, 0.22); }
+
+.ax-lane-outputs li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: clamp(10.5px, 2.8vw, 12px);
+  color: var(--text-dim);
+  opacity: 0.5;
+  transition: opacity 0.3s var(--ease), color 0.3s var(--ease);
+}
+
+.ax-lane-outputs li > svg { flex: none; color: rgba(255, 255, 255, 0.2); transition: color 0.3s var(--ease); }
+.ax-lane-outputs li.done { opacity: 1; color: var(--text-body); }
+.ax-lane-outputs li.done > svg { color: var(--green); }
+
+.ax-lane-foot {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 2px;
+  padding-top: 9px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+  font-size: clamp(10.5px, 2.7vw, 11.5px);
+  line-height: 1.5;
+  color: var(--orange-soft);
+}
+
+.ax-lane-foot > svg { flex: none; margin-top: 1px; }
+
+@media (min-width: 760px) {
+  .ax-race-lanes { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+
+/* ── 6. Grounding proof ──────────────────────────────────────────────────── */
+
+.ax-proof-sub {
+  font-size: clamp(10.5px, 2.7vw, 12px);
+  color: var(--text-dim);
+  max-width: 46ch;
+}
+
+.ax-proof-grid { display: grid; gap: clamp(10px, 2vw, 14px); }
+
+.ax-proof-step {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: clamp(11px, 2.4vw, 16px) clamp(11px, 2.4vw, 16px) clamp(11px, 2.4vw, 16px);
+  border-radius: 13px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.26);
+}
+
+.ax-proof-num {
+  position: absolute;
+  top: -9px;
+  left: clamp(11px, 2.4vw, 16px);
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: #170b00;
+  font-size: 10.5px;
+  font-weight: 900;
+}
+
+.ax-proof-step > b {
+  margin-top: 4px;
+  font-size: clamp(11.5px, 3vw, 13px);
+  font-weight: 800;
+  color: var(--text);
+}
+
+.ax-proof-json {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+.ax-json-brace { font-size: 11px; color: var(--text-dim); }
+
+.ax-json-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px;
+  padding: 4px 7px;
+  margin-left: 9px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  text-align: left;
+  transition: background 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+
+.ax-json-row.is-active {
+  border-color: rgba(249, 115, 22, 0.45);
+  background: rgba(249, 115, 22, 0.12);
+}
+
+.ax-json-key { font-size: clamp(10px, 2.6vw, 11.5px); color: var(--cyan); }
+.ax-json-colon { color: var(--text-dim); }
+.ax-json-val { font-size: clamp(10px, 2.6vw, 11.5px); font-weight: 700; color: var(--green-soft); }
+
+.ax-json-row em {
+  grid-column: 1 / -1;
+  font-style: normal;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 9.5px;
+  color: var(--text-dim);
+}
+
+.ax-proof-step p {
+  margin: 0;
+  font-size: clamp(11px, 2.9vw, 12.5px);
+  line-height: 1.6;
+  color: var(--text-body);
+}
+
+.ax-proof-pipe {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 0;
+  color: var(--orange);
+}
+
+.ax-pipe-line {
+  position: relative;
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.ax-pipe-line > i {
+  position: absolute;
+  inset: 0;
+  width: 34%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--orange), transparent);
+  animation: ax-slide 1.9s var(--ease) infinite;
+}
+
+.ax-proof-sentence {
+  font-size: clamp(11.5px, 3vw, 13px) !important;
+  line-height: 1.75 !important;
+}
+
+.ax-proof-sentence mark {
+  display: inline-block;
+  margin: 0 1px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+  font-size: 0.93em;
+  font-weight: 800;
+  transition: background 0.3s var(--ease), border-color 0.3s var(--ease), color 0.3s var(--ease), transform 0.3s var(--ease);
+}
+
+.ax-proof-sentence mark.is-lit {
+  background: rgba(249, 115, 22, 0.2);
+  border-color: rgba(249, 115, 22, 0.55);
+  color: var(--orange-soft);
+  transform: translateY(-1px);
+}
+
+.ax-proof-trace {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.ax-proof-trace code {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  color: var(--orange-soft);
+}
+
+.ax-proof-foot {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: clamp(10.5px, 2.7vw, 11.5px);
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.ax-proof-foot > svg { flex: none; margin-top: 1px; color: var(--cyan); }
+
+@media (min-width: 901px) {
+  .ax-proof-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
+}
+
+/* ── Two widgets, one phone screen ───────────────────────────────────────── */
+
+.ax-pair { display: grid; gap: clamp(10px, 2vw, 18px); width: 100%; min-width: 0; }
+.ax-pair-cell { min-width: 0; display: grid; }
+
+.ax-pair-switch {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ax-pair-tab {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 6px 16px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: clamp(11px, 2.5vw, 13px);
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.22s var(--ease), color 0.22s var(--ease);
+}
+
+.ax-pair-tab.is-active {
+  background: rgba(249, 115, 22, 0.16);
+  color: var(--orange-soft);
+  font-weight: 800;
+}
+
+.ax-pair.is-switched {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+.ax-pair.is-switched .ax-pair-switch {
+  width: auto !important;
+  max-width: 520px !important;
+  margin: 0 auto clamp(8px, 1.4vh, 14px) !important;
+}
+.ax-pair.is-switched .ax-pair-cell {
+  width: 100% !important;
+}
+
+@media (min-width: 901px) {
+  .ax-pair.ax-pair-wide:not(.is-switched) { grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr); align-items: start; }
+  .ax-pair.ax-pair-even:not(.is-switched) { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+
+/* ── Keyframes ───────────────────────────────────────────────────────────── */
+
+@keyframes ax-rise {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ax-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ax-pop {
+  0% { opacity: 0; transform: scale(0.72); }
+  70% { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ax-cell-in {
+  from { opacity: 0; transform: scale(0.4); }
+  to { opacity: var(--o, 1); transform: scale(1); }
+}
+
+@keyframes ax-grow-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes ax-grow-y {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes ax-ring {
+  from { stroke-dashoffset: var(--from); }
+  to { stroke-dashoffset: var(--to); }
+}
+
+@keyframes ax-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes ax-dash-flow {
+  from { stroke-dashoffset: 166; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes ax-node-pop {
+  0% { transform: scale(0.94); }
+  60% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+@keyframes ax-stamp {
+  0% { opacity: 0; transform: scale(1.25) rotate(-3deg); }
+  60% { opacity: 1; transform: scale(0.97) rotate(0.5deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes ax-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes ax-slide {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(310%); }
+}
+
+/* The blanket reduced-motion rule in theme.css collapses durations but not
+   delays, which would leave a staggered element parked at its opening frame.
+   Zeroing the delays here lands every demo on its finished picture instead. */
+@media (prefers-reduced-motion: reduce) {
+  [class*='ax-']:not(.ax-edge-pulse),
+  [class*='ax-']:not(.ax-edge-pulse)::before,
+  [class*='ax-']:not(.ax-edge-pulse)::after {
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .ax-pipe-line > i { animation: none; transform: none; width: 100%; }
+  .ax-lane-track > i { transition: none; }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LANDING FIT — the corrections that make every phase land on a screen
+   ═════════════════════════════════════════════════════════════════════════
+
+   The one-component-per-screen architecture in theme.css pinned each phase to
+   `max-height: 100dvh` with `overflow: hidden` on mobile. A phase whose content
+   was a few pixels taller than the viewport therefore had the overflow silently
+   cut off, with no scroll to reach it — the FAQ answer, the last CTA button and
+   the footer were all reachable only on a tall handset.
+
+   The fix keeps the full-screen rhythm and drops the clipping: a phase still
+   *fills* the screen (`min-height`), but it may now *exceed* it, and the page —
+   which is already the scroll container — scrolls. Snapping goes to
+   `proximity`, because mandatory snapping on a section taller than the viewport
+   traps a reader mid-section.                                               */
+
+.arg-landing.landing-scroll {
+  scroll-snap-type: y mandatory !important;
+  overscroll-behavior-y: contain !important;
+}
+
+.arg-landing .landing-phase {
+  height: 100vh !important;
+  height: 100svh !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+  overflow-y: hidden !important;
+  scroll-snap-align: start !important;
+  scroll-snap-stop: always !important;
+}
+
+/* A phase that no longer has a hard ceiling has nothing to distribute with
+   `space-between`, so its content is centred as a block and gapped instead. */
+.arg-landing .landing-phase {
+  justify-content: center !important;
+  gap: clamp(8px, 1.5vh, 16px) !important;
+}
+
+/* …except the last phase, which still wants its footer on the floor. */
+.arg-landing .phase-cta {
+  justify-content: space-between !important;
+}
+
+.arg-landing .arg-section .arg-inner {
+  height: 100% !important;
+  max-height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: clamp(6px, 1.2vh, 14px) !important;
+}
+
+@media (max-width: 900px) {
+  .arg-landing .landing-phase {
+    padding:
+      calc(58px + env(safe-area-inset-top, 0px))
+      clamp(12px, 3.6vw, 20px)
+      calc(26px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .arg-landing .phase-hero {
+    padding-top: calc(60px + env(safe-area-inset-top, 0px)) !important;
+  }
+
+  .arg-landing .arg-section .arg-inner {
+    max-width: 540px !important;
+  }
+
+  /* Readability floor. The previous pass had shrunk body copy to 10.5px and
+     section subtitles to `display: none` to win height that the layout no
+     longer needs to borrow. */
+  .arg-section-head p {
+    display: block !important;
+    max-width: 46ch !important;
+    margin: 5px auto 0 !important;
+    font-size: clamp(11.5px, 3.1vw, 13px) !important;
+    line-height: 1.5 !important;
+    color: var(--text-muted) !important;
+  }
+
+  .arg-section-head h2 {
+    font-size: clamp(1.18rem, 4.9vw, 1.5rem) !important;
+    line-height: 1.22 !important;
+  }
+
+  .arg-section-tag {
+    font-size: 9.5px !important;
+    padding: 3px 9px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .arg-mobile-hero {
+    height: auto !important;
+    gap: 10px !important;
+    justify-content: flex-start !important;
+  }
+
+  .mobile-hero-h1 {
+    font-size: clamp(1.4rem, 6.4vw, 1.8rem) !important;
+    margin: 4px 0 !important;
+  }
+
+  .mobile-hero-sub {
+    font-size: clamp(11.5px, 3.2vw, 13px) !important;
+    line-height: 1.5 !important;
+    margin: 0 0 6px !important;
+  }
+
+  .mobile-cta-btn,
+  .mobile-demo-btn {
+    min-height: 44px !important;
+    font-size: 12.5px !important;
+  }
+
+  /* Touch targets: 44px is the smallest reliably tappable control. */
+  .arg-nav-link,
+  .arg-nav-cta,
+  .arg-nav-login,
+  .arg-nav-demo-btn {
+    min-height: 44px !important;
+  }
+
+  /* index.html opts into `viewport-fit=cover`, so the fixed bar and the drawer
+     have to keep themselves out of the status bar and the home indicator. */
+  .arg-nav {
+    height: calc(50px + env(safe-area-inset-top, 0px)) !important;
+    padding:
+      env(safe-area-inset-top, 0px)
+      max(14px, env(safe-area-inset-right, 0px))
+      0
+      max(14px, env(safe-area-inset-left, 0px)) !important;
+  }
+
+  .arg-nav-drawer {
+    padding-top: calc(20px + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px)) !important;
+    overscroll-behavior: contain !important;
+  }
+}
+
+/* The Architecture phase used to be a two-column grid holding the lead copy and
+   a 2×2 card grid. The cards have been replaced by the grounding proof, which
+   needs the full width for its three panels, so the phase is now a stack. */
+.arg-about {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: clamp(12px, 2vh, 20px) !important;
+  align-items: start !important;
+}
+
+.arg-about > :first-child,
+.arg-about > .ax-proof,
+.arg-about > .arg-flow {
+  grid-column: 1 / -1 !important;
+}
+
+.arg-about-lead { max-width: 96ch; }
+
+/* The explainer widgets are the tallest things on the page, so they get the
+   room they need rather than being squeezed to fit a nominal screen. */
+.arg-landing .landing-phase.phase-explainer {
+  justify-content: center !important;
+  padding-top: calc(64px + env(safe-area-inset-top, 0px)) !important;
+  padding-bottom: clamp(10px, 1.8vh, 18px) !important;
+}
+
+@media (max-width: 900px) {
+  .arg-landing .landing-phase.phase-explainer {
+    padding-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: 12px !important;
+  }
+}

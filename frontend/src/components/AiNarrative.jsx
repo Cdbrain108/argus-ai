@@ -16,7 +16,7 @@ export default function AiNarrative({
 }) {
   const text = payload?.text || ''
   const alreadySeen = Boolean(text && seenNarratives.has(text))
-  const { text: typed, done, skip } = useTypedText(text, { active: !alreadySeen })
+  const { text: typed, done, skip } = useTypedText(text, { delay: 15, chunkSize: 3, active: !alreadySeen })
 
   useEffect(() => {
     if (text && done) {
@@ -24,7 +24,8 @@ export default function AiNarrative({
     }
   }, [text, done])
 
-  const handleSkip = () => {
+  const handleSkip = (e) => {
+    if (e) e.stopPropagation()
     if (text) seenNarratives.add(text)
     skip()
   }
@@ -38,7 +39,7 @@ export default function AiNarrative({
           <Sparkles size={12} /> {label}
         </span>
         <p className="ai-narrative-body">
-          <LoaderCircle size={13} className="spin" /> Reading the data and writing a description…
+          <LoaderCircle size={13} className="spin" /> Reading the data and generating grounded description…
         </p>
       </div>
     )
@@ -52,12 +53,24 @@ export default function AiNarrative({
     <div
       className={`ai-narrative${done ? ' done' : ' typing'}${size}`}
       onClick={done ? undefined : handleSkip}
-      title={done ? '' : 'Click to show the whole description'}
+      title={done ? '' : 'Click to show full description'}
     >
-      <span className="eyebrow">
-        <Sparkles size={12} /> {label}
-        {deterministic && <em className="ai-narrative-tag">computed, not generated</em>}
-      </span>
+      <div className="ai-narrative-header-row">
+        <span className="eyebrow">
+          <Sparkles size={12} /> {label}
+          {deterministic && <em className="ai-narrative-tag">computed, not generated</em>}
+        </span>
+        {!done && (
+          <button
+            type="button"
+            className="ai-skip-btn"
+            onClick={handleSkip}
+            title="Show full summary instantly"
+          >
+            ⚡ Show Full
+          </button>
+        )}
+      </div>
       <p className="ai-narrative-body">
         {typed}
         {!done && <span className="ai-cursor" aria-hidden="true" />}

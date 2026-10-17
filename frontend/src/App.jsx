@@ -33,12 +33,14 @@ import {
   MessageSquare,
   Minimize2,
   PanelLeft,
+  PanelLeftClose,
   Pin,
   Play,
   Plus,
   RefreshCw,
   Search,
   Settings2,
+  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Star,
@@ -53,12 +55,17 @@ import {
 } from 'lucide-react'
 import * as api from './api'
 import Landing from './Landing'
-import { useScrollLock, useDynamicViewport } from './hooks'
+import { useScrollLock, useDynamicViewport, useMediaQuery } from './hooks'
 import AiNarrative from './components/AiNarrative'
 import { DatasetOverview } from './components/DatasetOverview'
 import AuthModal from './components/AuthModal'
+import AuthPage from './components/AuthPage'
 import RatingModal from './components/RatingModal'
+import DatasetContinuationModal from './components/DatasetContinuationModal'
+import UploadModal from './components/UploadModal'
+import { MobileWorkspaceEmpty, MobileAnalystSwitcher } from './components/MobilePerfect'
 import ArgusLogoIntro from './components/ArgusLogoIntro'
+import { subscribeToAuthChanges, logoutFirebase } from './services/firebase'
 import MasterChart, {
   BarChart,
   CorrelationHeatmap,
@@ -146,12 +153,23 @@ function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authModalTab, setAuthModalTab] = useState('login')
   const [ratingModalOpen, setRatingModalOpen] = useState(false)
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [uploadModalForNewChat, setUploadModalForNewChat] = useState(false)
   const [showIntro, setShowIntro] = useState(true)
+  const [datasetLoading, setDatasetLoading] = useState(null)
+  const datasetPrefetchedIdRef = useRef(null)
 
-  // Validate session on mount
+  // Validate session on mount & subscribe to Firebase auth
   useEffect(() => {
+    const unsubscribe = subscribeToAuthChanges((fbUser) => {
+      if (fbUser) {
+        setUser(fbUser)
+        api.setStoredUser(fbUser)
+      }
+    })
+
     const token = api.getAuthToken()
-    if (token) {
+    if (token && !token.startsWith('firebase_')) {
       api.getMe()
         .then((res) => {
           if (res?.user) {
@@ -165,6 +183,8 @@ function App() {
           setUser(null)
         })
     }
+
+    return () => unsubscribe?.()
   }, [])
 
   // Set data attribute for touch device detection at the DOM level
@@ -185,20 +205,32 @@ function App() {
     return () => clearTimeout(timer)
   }, [toast])
 
-  function openAuth(tab = 'login') {
+  function openAuth(tab = 'login', asModal = false) {
     setAuthModalTab(tab)
-    setAuthModalOpen(true)
+    if (asModal) {
+      setAuthModalOpen(true)
+    } else {
+      setView('auth')
+      window.scrollTo(0, 0)
+    }
   }
 
   function handleAuthSuccess(authedUser) {
     setUser(authedUser)
     setAuthModalOpen(false)
     setToast(`Signed in as ${authedUser.name}`)
-    enterWorkspace()
+    if (dataset) {
+      enterWorkspace()
+    } else {
+      setView('landing')
+      setUploadModalForNewChat(false)
+      setUploadModalOpen(true)
+    }
   }
 
   async function handleLogout() {
     try {
+      await logoutFirebase()
       await api.logout()
     } catch {}
     api.setAuthToken('')
@@ -237,38 +269,100 @@ function App() {
     window.scrollTo(0, 0)
   }
 
-  async function loadDemo() {
-    enterWorkspace()
+  async function loadDemo(demoKey = 'titanic') {
     setBusy(true)
     setError('')
+    const DEMO_METAS = {
+      titanic: {
+        filename: 'titanic_master.csv',
+        fileSize: '60.3 KB',
+        name: 'Titanic Survival Master',
+      },
+      bikeshare: {
+        filename: 'daily-bike-share.csv',
+        fileSize: '43.6 KB',
+        name: 'Capital Bike Share Ridership',
+      },
+      churn: {
+        filename: 'customer_churn.csv',
+        fileSize: '92.4 KB',
+        name: 'Customer Churn & Retention',
+      },
+    }
+    const meta = DEMO_METAS[demoKey] || DEMO_METAS.titanic
+
+    setDatasetLoading({
+      filename: meta.filename,
+      step: 1,
+      statusText: `Sniffing ${meta.name} schema & encoding...`,
+      fileSize: meta.fileSize,
+    })
     try {
-      const data = await api.loadDemoDataset()
-      applyDataset(data)
-      setToast('Demo dataset loaded successfully')
+      const demoPromise = api.loadDemoDataset(demoKey)
+      const stepTimer = setTimeout(() => {
+        setDatasetLoading((prev) => prev ? {
+          ...prev,
+          step: 2,
+          statusText: 'Parsing semantic dtypes & missing masks...',
+        } : null)
+      }, 150)
+
+      const data = await demoPromise
+      clearTimeout(stepTimer)
+
+      // Step 3: Statistical audit
+      setDatasetLoading((prev) => prev ? {
+        ...prev,
+        step: 3,
+        statusText: 'Computing Tukey IQR fences, correlation matrix & health score...',
+      } : null)
+
+      // Prefetch profile and preview in parallel so there is zero empty-state lag
+      const [prof, prevw] = await Promise.all([
+        api.getDataset(data.dataset_id).catch(() => null),
+        api.getPreview(data.dataset_id).catch(() => null),
+      ])
+
+      const targetPage = uploadModalForNewChat ? 'analyst' : 'dataset'
+      applyDataset(data, prof, prevw, targetPage)
+      setUploadModalOpen(false)
+      setUploadModalForNewChat(false)
+      setView('workspace')
+      window.scrollTo(0, 0)
+      setToast(`${meta.name} loaded successfully!`)
     } catch (e) {
       setError(e.message)
+      setToast(`Load error: ${e.message}`)
     } finally {
+      setDatasetLoading(null)
       setBusy(false)
     }
   }
 
-  function applyDataset(uploaded) {
+  function applyDataset(uploaded, initialProfile = null, initialPreview = null, targetPage = 'dataset') {
+    if (initialProfile && initialPreview) {
+      datasetPrefetchedIdRef.current = uploaded.dataset_id
+    }
     setDataset(uploaded)
-    setProfile(null)
-    setPreview(null)
+    setProfile(initialProfile)
+    setPreview(initialPreview)
     setNarrative(null)
     setMessages([])
     setAnalysis(null)
     setRecentAnalyses([])
     setSessionId('')
     localStorage.removeItem('argus-session')
-    setPage('dataset')
+    setPage(targetPage)
   }
 
   useEffect(() => {
     if (!dataset) return undefined
-    api.getDataset(dataset.dataset_id).then(setProfile).catch((e) => setError(e.message))
-    api.getPreview(dataset.dataset_id).then(setPreview).catch((e) => setError(e.message))
+
+    // Only fetch profile and preview if not already prefetched during the continuation window
+    if (datasetPrefetchedIdRef.current !== dataset.dataset_id) {
+      api.getDataset(dataset.dataset_id).then(setProfile).catch((e) => setError(e.message))
+      api.getPreview(dataset.dataset_id).then(setPreview).catch((e) => setError(e.message))
+    }
 
     /* The AI description is a model call, so it is fetched on its own: the page
        renders immediately and the description arrives into its own box. A failure
@@ -306,16 +400,62 @@ function App() {
      exactly the same path as a picked one. */
   async function uploadFile(file) {
     if (!file) return
+    if (!user) {
+      setToast('Please log in or sign up to upload datasets.')
+      openAuth('login', true)
+      return
+    }
     setBusy(true)
     setError('')
+    const sizeStr = file.size > 1024 * 1024
+      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+      : `${Math.round(file.size / 1024)} KB`
+
+    setDatasetLoading({
+      filename: file.name,
+      step: 1,
+      statusText: `Uploading & sniffing ${file.name}...`,
+      fileSize: sizeStr,
+    })
+
     try {
-      const data = await api.uploadDataset(file)
-      applyDataset(data)
+      const uploadPromise = api.uploadDataset(file)
+      const stepTimer = setTimeout(() => {
+        setDatasetLoading((prev) => prev ? {
+          ...prev,
+          step: 2,
+          statusText: 'Inferring logical schemas & currency / date coercion...',
+        } : null)
+      }, 400)
+
+      const data = await uploadPromise
+      clearTimeout(stepTimer)
+
+      // Step 3: Statistical audit
+      setDatasetLoading((prev) => prev ? {
+        ...prev,
+        step: 3,
+        statusText: 'Auditing distributions, IQR outliers & health metrics...',
+      } : null)
+
+      // Prefetch profile and preview in parallel
+      const [prof, prevw] = await Promise.all([
+        api.getDataset(data.dataset_id).catch(() => null),
+        api.getPreview(data.dataset_id).catch(() => null),
+      ])
+
+      const targetPage = uploadModalForNewChat ? 'analyst' : 'dataset'
+      applyDataset(data, prof, prevw, targetPage)
+      setUploadModalOpen(false)
+      setUploadModalForNewChat(false)
       setView('workspace')
+      window.scrollTo(0, 0)
       setToast('Dataset uploaded and ready')
     } catch (e) {
       setError(e.message)
+      setToast(`Upload error: ${e.message}`)
     } finally {
+      setDatasetLoading(null)
       setBusy(false)
     }
   }
@@ -330,7 +470,7 @@ function App() {
 
   async function sendMessage(textToSend) {
     const text = (typeof textToSend === 'string' ? textToSend : draft).trim()
-    if (!text || !dataset || busy) return
+    if (!text || busy) return
     setDraft('')
     setBusy(true)
     setError('')
@@ -340,7 +480,7 @@ function App() {
 
     try {
       const response = await api.sendChat({
-        dataset_id: dataset.dataset_id,
+        dataset_id: dataset?.dataset_id || null,
         session_id: sessionId,
         message: text,
       })
@@ -348,6 +488,16 @@ function App() {
       if (response.session_id) {
         setSessionId(response.session_id)
         localStorage.setItem('argus-session', response.session_id)
+      }
+
+      if (!dataset && response.dataset_id) {
+        api.getDataset(response.dataset_id)
+          .then((loadedProfile) => {
+            setDataset({ dataset_id: response.dataset_id, filename: 'titanic_demo.csv' })
+            setProfile(loadedProfile)
+            api.getPreview(response.dataset_id).then(setPreview).catch(() => {})
+          })
+          .catch(() => {})
       }
 
       const reply = response.reply || response.analysis?.explanation || 'Analysis completed.'
@@ -401,7 +551,10 @@ function App() {
 
   function startNewChat() {
     setMessages([])
-    setPage('analyst')
+    setAnalysis(null)
+    setDraft('')
+    setUploadModalForNewChat(true)
+    setUploadModalOpen(true)
   }
 
   function loadHistoricalChat(item) {
@@ -446,13 +599,38 @@ function App() {
       {view === 'landing' ? (
         <Landing
           onEnter={() => {
-            enterWorkspace()
-            openFilePicker()
+            if (!user) {
+              setToast('Please log in or sign up to upload datasets.')
+              openAuth('login', true)
+              return
+            }
+            if (dataset) {
+              setView('workspace')
+              window.scrollTo(0, 0)
+              return
+            }
+            setUploadModalForNewChat(false)
+            setUploadModalOpen(true)
           }}
-          onDemo={loadDemo}
+          onDemo={() => {
+            if (!user) {
+              setToast('Please log in or sign up to run analyses.')
+              openAuth('login', true)
+              return
+            }
+            setUploadModalForNewChat(false)
+            setUploadModalOpen(true)
+          }}
           onOpenAuth={openAuth}
           user={user}
           onOpenRating={openRating}
+        />
+      ) : view === 'auth' ? (
+        <AuthPage
+          initialTab={authModalTab}
+          onSuccess={handleAuthSuccess}
+          onDemo={loadDemo}
+          onHome={() => setView('landing')}
         />
       ) : (
         <Workspace
@@ -493,10 +671,34 @@ function App() {
           setVerboseMode={setVerboseMode}
           showSettings={showSettings}
           setShowSettings={setShowSettings}
-          onUpload={openFilePicker}
+          onUpload={() => setUploadModalOpen(true)}
           onFile={uploadFile}
           onHome={() => setView('landing')}
           onDemo={loadDemo}
+        />
+      )}
+
+      {/* Native Dataset Upload Window Modal */}
+      <UploadModal
+        isOpen={uploadModalOpen}
+        onClose={() => {
+          setUploadModalOpen(false)
+          setUploadModalForNewChat(false)
+        }}
+        onFile={uploadFile}
+        onDemo={loadDemo}
+        user={user}
+        onOpenAuth={(tab) => openAuth(tab, true)}
+        busy={busy}
+      />
+
+      {/* Dataset Ingestion Continuation Window */}
+      {datasetLoading && (
+        <DatasetContinuationModal
+          filename={datasetLoading.filename}
+          step={datasetLoading.step}
+          statusText={datasetLoading.statusText}
+          fileSize={datasetLoading.fileSize}
         />
       )}
 
@@ -564,147 +766,62 @@ function Workspace(props) {
     onDemo,
   } = props
 
-  const [navOpen, setNavOpen] = useState(false)
-  const [initialVisible, setInitialVisible] = useState(true)
-  const [sidebarPinned, setSidebarPinned] = useState(() => {
+  // sidebarOpen controls whether the left sidebar is open or closed.
+  // When sidebarOpen is true:
+  //   - Sidebar is visible statically in the window (no mouse-hover movement).
+  //   - Top taskbar is HIDDEN.
+  // When sidebarOpen is false:
+  //   - Sidebar is closed/hidden.
+  const isMobileScreen = useMediaQuery('(max-width: 900px)')
+  // On desktop, the sidebar is open by default so the user sees all workspace sections clearly.
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobileScreen)
+
+  // Track if first-time auto-fullscreen has already run for AI Analyst
+  const [analystFirstAutoApplied, setAnalystFirstAutoApplied] = useState(() => {
     try {
-      return localStorage.getItem('argus-sidebar-pinned') === 'true'
+      return sessionStorage.getItem('argus-analyst-autofullscreen-applied') === 'true'
     } catch {
       return false
     }
   })
-  const [hoveringSidebar, setHoveringSidebar] = useState(false)
-  const [hoveringTopbar, setHoveringTopbar] = useState(false)
-  const hoverTimerRef = useRef(null)
-  const topbarHoverTimerRef = useRef(null)
-  const autoHideTimerRef = useRef(null)
-
-  // When a dataset is uploaded or loaded, ALWAYS keep the sidebar visible!
-  useEffect(() => {
-    if (dataset?.dataset_id) {
-      setInitialVisible(true)
-      if (autoHideTimerRef.current) {
-        clearTimeout(autoHideTimerRef.current)
-        autoHideTimerRef.current = null
-      }
-    }
-  }, [dataset?.dataset_id])
-
-  const handleMouseEnterSidebar = () => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
-    setHoveringSidebar(true)
-  }
-
-  const handleMouseLeaveSidebar = () => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
-    hoverTimerRef.current = setTimeout(() => {
-      setHoveringSidebar(false)
-    }, 200)
-  }
-
-  // Trigger 5-second auto-hide countdown when user performs operations in workspace
-  const triggerActivity = () => {
-    if (!initialVisible) return
-    if (!autoHideTimerRef.current) {
-      autoHideTimerRef.current = setTimeout(() => {
-        setInitialVisible(false)
-        autoHideTimerRef.current = null
-      }, 5000)
-    }
-  }
-
-  // Detect operations inside the workspace (typing questions, clicking analysis, etc.)
-  useEffect(() => {
-    if (!initialVisible) return undefined
-    const handleWorkspaceAction = (e) => {
-      // Don't auto-hide if user is just clicking inside the sidebar, topbar, or modals
-      if (e.target.closest('.sidebar, .topbar, .auth-modal, .rating-dialog, .drop-overlay, .file-input')) return
-      triggerActivity()
-    }
-    window.addEventListener('click', handleWorkspaceAction, { passive: true })
-    window.addEventListener('keydown', handleWorkspaceAction, { passive: true })
-    return () => {
-      window.removeEventListener('click', handleWorkspaceAction)
-      window.removeEventListener('keydown', handleWorkspaceAction)
-    }
-  }, [initialVisible])
-
-  // Cleanup timers on unmount
-  useEffect(() => {
-    return () => {
-      if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current)
-      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
-      if (topbarHoverTimerRef.current) clearTimeout(topbarHoverTimerRef.current)
-    }
-  }, [])
-
-  // Rotate/Move mouse near left edge (<= 65px) or top edge (<= 55px) to reveal
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      // 1. Left edge mouse detection for sidebar
-      if (e.clientX <= 65) {
-        if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
-        setHoveringSidebar(true)
-      } else if (e.clientX > 275 && !navOpen) {
-        if (hoveringSidebar && !hoverTimerRef.current) {
-          hoverTimerRef.current = setTimeout(() => {
-            setHoveringSidebar(false)
-            hoverTimerRef.current = null
-          }, 200)
-        }
-      }
-
-      // 2. Top edge mouse detection for top taskbar
-      if (e.clientY <= 55) {
-        if (topbarHoverTimerRef.current) clearTimeout(topbarHoverTimerRef.current)
-        setHoveringTopbar(true)
-      } else if (e.clientY > 80) {
-        if (hoveringTopbar && !topbarHoverTimerRef.current) {
-          topbarHoverTimerRef.current = setTimeout(() => {
-            setHoveringTopbar(false)
-            topbarHoverTimerRef.current = null
-          }, 250)
-        }
-      }
-    }
-    window.addEventListener('mousemove', handleMouseMove, { passive: true })
-    return () => window.removeEventListener('mousemove', handleMouseMove)
-  }, [navOpen, hoveringSidebar, hoveringTopbar])
-
-  const isSidebarVisible = sidebarPinned || initialVisible || navOpen || hoveringSidebar
-  const isTopbarHidden = (busy || !initialVisible) && !hoveringTopbar && !navOpen
 
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  const toggleFullscreen = async () => {
-    try {
-      if (!isFullscreen) {
-        if (document.documentElement.requestFullscreen) {
-          await document.documentElement.requestFullscreen()
-        } else if (document.documentElement.webkitRequestFullscreen) {
-          await document.documentElement.webkitRequestFullscreen()
-        }
-        setIsFullscreen(true)
-        // Automatically hide sidebar in fullscreen so user gets 100% whole screen
-        setNavOpen(false)
-        setHoveringSidebar(false)
-        setInitialVisible(false)
-      } else {
-        if (document.fullscreenElement || document.webkitFullscreenElement) {
-          if (document.exitFullscreen) {
-            await document.exitFullscreen()
-          } else if (document.webkitExitFullscreen) {
-            await document.webkitExitFullscreen()
-          }
-        }
-        setIsFullscreen(false)
-        setHoveringTopbar(true)
-        setTimeout(() => setHoveringTopbar(false), 2500)
-      }
-    } catch {
-      // Fallback: toggle CSS immersive mode
-      setIsFullscreen((prev) => !prev)
+  // Auto-land into Fullscreen on AI Analyst for the VERY FIRST TIME ONLY
+  useEffect(() => {
+    if (page === 'analyst' && !analystFirstAutoApplied) {
+      setIsFullscreen(true)
+      setSidebarOpen(false)
+      setAnalystFirstAutoApplied(true)
+      try { sessionStorage.setItem('argus-analyst-autofullscreen-applied', 'true') } catch {}
     }
+  }, [page, analystFirstAutoApplied])
+
+  // When switching pages: all other sections exit fullscreen instantly without OS display lag
+  useEffect(() => {
+    if (page !== 'analyst') {
+      setIsFullscreen(false)
+    }
+  }, [page])
+
+  // Sidebar visibility:
+  // Statically open when sidebarOpen is true.
+  const isSidebarVisible = sidebarOpen
+
+  // Topbar visibility:
+  // When sidebar is opened: top taskbar will NOT be shown!
+  // When sidebar is closed: top taskbar is open (unless in native/immersive fullscreen mode).
+  const isTopbarHidden = isFullscreen || sidebarOpen
+
+  // Instant zero-latency CSS immersive fullscreen toggle (0ms delay, no OS-level flickering)
+  const toggleFullscreen = () => {
+    setIsFullscreen((prev) => {
+      const next = !prev
+      if (next) {
+        setSidebarOpen(false)
+      }
+      return next
+    })
   }
 
   // Sync state with native browser fullscreen change (e.g. user pressed Esc natively or browser control)
@@ -721,7 +838,7 @@ function Workspace(props) {
     }
   }, [])
 
-  // Listen for Escape key to exit fullscreen and look up (reveal topbar)
+  // Listen for Escape key: close sidebar or exit fullscreen
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -735,14 +852,14 @@ function Workspace(props) {
           }
           setIsFullscreen(false)
         }
-        // "esc to look up": reveal topbar
-        setHoveringTopbar(true)
-        setTimeout(() => setHoveringTopbar(false), 3000)
+        if (sidebarOpen) {
+          setSidebarOpen(false)
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isFullscreen])
+  }, [isFullscreen, sidebarOpen])
 
   const [dragging, setDragging] = useState(false)
   // Dynamic viewport height for mobile — accounts for browser chrome collapse
@@ -757,7 +874,7 @@ function Workspace(props) {
   // a depth counter is the only reliable way to know when the file has really
   // left the window rather than just moved over a child.
   const dragDepth = useRef(0)
-  useScrollLock(navOpen)
+  useScrollLock(isMobileScreen && sidebarOpen)
 
   const carriesFile = (event) => Array.from(event.dataTransfer?.types || []).includes('Files')
 
@@ -790,16 +907,25 @@ function Workspace(props) {
   }
 
   function goTo(id) {
+    if (id !== 'analyst') {
+      setIsFullscreen(false)
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {})
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen().catch(() => {})
+        }
+      }
+    }
     setPage(id)
-    if (!sidebarPinned) {
-      setNavOpen(false)
-      triggerActivity()
+    if (isMobileScreen) {
+      setSidebarOpen(false)
     }
   }
 
   return (
-    <div className={`app-shell workspace-shell ${sidebarPinned ? 'sidebar-pinned' : 'sidebar-fullscreen'} ${isSidebarVisible ? 'sidebar-active' : ''} ${isTopbarHidden ? 'topbar-hidden' : ''} ${isFullscreen ? 'immersive-fullscreen' : ''}`}>
-      {/* Immersive Fullscreen HUD pill: "esc to look up" */}
+    <div className={`app-shell workspace-shell ${isSidebarVisible ? 'sidebar-active' : ''} ${isTopbarHidden ? 'topbar-hidden' : ''} ${isFullscreen ? 'immersive-fullscreen' : ''}`}>
+      {/* Immersive Fullscreen HUD pill */}
       {isFullscreen && (
         <button
           type="button"
@@ -808,31 +934,12 @@ function Workspace(props) {
           title="Click or press Esc to look up and restore standard layout"
         >
           <Minimize2 size={13} />
-          <span>Full Screen Active &middot; Press <strong>ESC</strong> to look up &amp; restore</span>
+          <span>Full Screen Active &middot; Press <strong>ESC</strong> to restore</span>
         </button>
       )}
-      {/* 1. Top Edge Hover Detection Zone */}
-      <div
-        className="topbar-edge-hover-zone"
-        onMouseEnter={() => setHoveringTopbar(true)}
-        aria-hidden="true"
-      />
 
-      {/* 2. Left Edge Hover Detection Zone */}
-      {!sidebarPinned && (
-        <div
-          className="sidebar-edge-hover-zone"
-          onMouseEnter={handleMouseEnterSidebar}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Left Navigation Sidebar */}
-      <aside
-        className={isSidebarVisible ? 'sidebar open hovered' : 'sidebar'}
-        onMouseEnter={handleMouseEnterSidebar}
-        onMouseLeave={handleMouseLeaveSidebar}
-      >
+      {/* Left Navigation Sidebar - Statically stays in window when open */}
+      <aside className={isSidebarVisible ? 'sidebar open' : 'sidebar'}>
         <div className="sidebar-brand-row">
           <button className="brand" onClick={onHome} title="Back to ARGUS home page">
             <BrandLogo />
@@ -844,28 +951,12 @@ function Workspace(props) {
           <div className="sidebar-header-actions">
             <button
               type="button"
-              className={`sidebar-header-btn ${sidebarPinned ? 'pinned' : ''}`}
-              onClick={() => {
-                setSidebarPinned((p) => {
-                  const next = !p
-                  try { localStorage.setItem('argus-sidebar-pinned', String(next)) } catch {}
-                  return next
-                })
-              }}
-              title={sidebarPinned ? "Unpin sidebar (Switch to Full Screen View)" : "Pin sidebar to screen"}
+              className="sidebar-header-btn close-sidebar-btn"
+              onClick={() => setSidebarOpen(false)}
+              title="Close sidebar (Show top taskbar & full screen)"
+              aria-label="Close sidebar"
             >
-              <Pin size={14} />
-            </button>
-            <button
-              type="button"
-              className="sidebar-header-btn"
-              onClick={() => {
-                setNavOpen(false)
-                setHoveringSidebar(false)
-              }}
-              title="Close sidebar"
-            >
-              <X size={15} />
+              <PanelLeftClose size={16} />
             </button>
           </div>
         </div>
@@ -936,15 +1027,21 @@ function Workspace(props) {
         <button className="nav-item" onClick={() => setShowSettings(true)}>
           <Settings2 size={17} /> Settings & Modes
         </button>
+        <button
+          type="button"
+          className="nav-item close-sidebar-nav-action"
+          onClick={() => setSidebarOpen(false)}
+          title="Close sidebar & open full screen"
+        >
+          <PanelLeftClose size={17} /> Close Sidebar
+        </button>
       </aside>
 
-      {isSidebarVisible && !sidebarPinned && (
+      {/* Scrim on mobile only when drawer is open */}
+      {isMobileScreen && isSidebarVisible && (
         <div
           className="sidebar-scrim"
-          onClick={() => {
-            setNavOpen(false)
-            setHoveringSidebar(false)
-          }}
+          onClick={() => setSidebarOpen(false)}
         />
       )}
 
@@ -970,29 +1067,16 @@ function Workspace(props) {
             </div>
           </div>
         )}
-        <header
-          className="topbar"
-          onMouseEnter={() => setHoveringTopbar(true)}
-          onMouseLeave={() => setHoveringTopbar(false)}
-        >
+        <header className="topbar">
           <div className="topbar-left">
             <button
               type="button"
-              className={`nav-toggle ${isSidebarVisible ? 'active' : ''}`}
-              onClick={() => {
-                if (isSidebarVisible) {
-                  setNavOpen(false)
-                  setHoveringSidebar(false)
-                  setInitialVisible(false)
-                } else {
-                  setNavOpen(true)
-                  setHoveringSidebar(true)
-                }
-              }}
-              aria-label="Toggle Sidebar Menu"
-              title={isSidebarVisible ? "Hide Sidebar Menu" : "Show Sidebar Menu"}
+              className="nav-toggle"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open Sidebar Menu"
+              title="Open Sidebar Menu"
             >
-              {isSidebarVisible ? <X size={16} /> : <PanelLeft size={16} />}
+              <PanelLeft size={16} />
               <span className="nav-toggle-text">Menu</span>
             </button>
             <button className="mobile-brand" onClick={onHome}>
@@ -1047,9 +1131,6 @@ function Workspace(props) {
               <Star size={15} fill="#f97316" color="#f97316" />
               <span>Rate</span>
             </button>
-            <button type="button" className="upload-button" onClick={onUpload} disabled={busy}>
-              <Upload size={16} /> <span>Upload data</span>
-            </button>
             {user ? (
               <UserMenu user={user} onLogout={onLogout} onOpenRating={onOpenRating} />
             ) : (
@@ -1085,7 +1166,7 @@ function Workspace(props) {
         )}
 
         <div className="content">
-          <div className={`workspace-page workspace-page-${page}`} key={`${page}-${dataset?.dataset_id || 'empty'}`}>
+          <div className={`workspace-page workspace-page-${page}`}>
           {page === 'analyst' && (
             <AnalystPage
               dataset={dataset}
@@ -1163,6 +1244,31 @@ function Workspace(props) {
           </div>
         </div>
       </main>
+
+      {/* ── Dedicated Mobile Bottom Taskbar (Samvaad Ergonomics) ────────────── */}
+      <nav className="workspace-mobile-bottom-nav" aria-label="Mobile Navigation Bar">
+        {NAV.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            className={`mobile-bottom-nav-item ${page === id ? 'active' : ''}`}
+            onClick={() => goTo(id)}
+            title={label}
+          >
+            <Icon size={18} />
+            <span>{id === 'features' ? 'Features' : id === 'cleaning' ? 'Clean' : label}</span>
+          </button>
+        ))}
+        <button
+          type="button"
+          className="mobile-bottom-nav-item action-new-chat"
+          onClick={startNewChat}
+          title="Start fresh analysis turn"
+        >
+          <Plus size={18} />
+          <span>New</span>
+        </button>
+      </nav>
 
       {/* Settings Modal */}
       {showSettings && (
@@ -1255,16 +1361,15 @@ function UserMenu({ user, onLogout, onOpenRating }) {
 
 function EmptyState({ onUpload, onDemo }) {
   return (
+    <>
     <div className="empty-state">
       <div className="empty-icon">
         <Database size={24} />
       </div>
       <h2>Bring a dataset into focus</h2>
       <p>
-        Drop a file anywhere in this window, or choose one below. ARGUS reads the values rather
-        than trusting the header &mdash; dates written as text, currency, percentages and yes/no
-        columns are converted on arrival &mdash; then profiles health, cleans, discovers predictive
-        features, and answers plain-language questions.
+        Drop a file anywhere in this window, or choose one below. Argus automatically detects schemas,
+        flags missingness and Tukey outliers, correlates features, and generates publication-grade charts.
       </p>
       <div className="empty-state-actions">
         <button type="button" className="primary-button" onClick={onUpload}>
@@ -1281,10 +1386,17 @@ function EmptyState({ onUpload, onDemo }) {
           </button>
         )}
       </div>
-      <span className="muted" style={{ fontSize: 12 }}>
-         CSV, TSV, JSON, JSONL, Parquet, XLSX, XLS, XLSM &middot; up to 50 MB
-      </span>
+      <div className="empty-format-pills" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '12px' }}>
+        {['CSV', 'Excel', 'Parquet', 'JSON', 'Max 50MB'].map((fmt) => (
+          <span key={fmt} style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)' }}>
+            {fmt}
+          </span>
+        ))}
+      </div>
     </div>
+    {/* Mobile-first empty state (perfect-fit.css shows it below 768px). */}
+    <MobileWorkspaceEmpty onUpload={onUpload} onDemo={onDemo} />
+    </>
   )
 }
 
@@ -1324,6 +1436,55 @@ function renderFormattedMessage(text) {
           </p>
         )
       })}
+    </div>
+  )
+}
+
+function ReasoningProgressTicker() {
+  const [stage, setStage] = useState(0)
+
+  const stages = [
+    { text: 'Parsing query intent & isolating target data fields...', icon: BrainCircuit, color: '#38BDF8' },
+    { text: 'AST verification: local sandbox verified safe (0 unsafe calls)...', icon: ShieldCheck, color: '#1D9E75' },
+    { text: 'Executing verified Python calculations (pandas, SciPy, sklearn)...', icon: Terminal, color: '#EF9F27' },
+    { text: 'Grounding insights & formulating mathematical explanation...', icon: Sparkles, color: '#7F77DD' },
+  ]
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setStage(1), 700)
+    const t2 = setTimeout(() => setStage(2), 1600)
+    const t3 = setTimeout(() => setStage(3), 2800)
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+      clearTimeout(t3)
+    }
+  }, [])
+
+  const current = stages[stage]
+  const Icon = current.icon
+
+  return (
+    <div className="message assistant thinking-samvaad">
+      <div className="message-avatar">A</div>
+      <div className="thinking-card-samvaad">
+        <div className="thinking-stage-head">
+          <span className="thinking-pulse-dot" />
+          <Icon size={14} style={{ color: current.color }} />
+          <span className="thinking-text">{current.text}</span>
+          <LoaderCircle size={14} className="spin" style={{ marginLeft: 'auto', color: current.color }} />
+        </div>
+        <div className="thinking-progress-pills">
+          {stages.map((s, idx) => (
+            <span
+              key={idx}
+              className={`stage-pill ${idx === stage ? 'active' : idx < stage ? 'done' : 'pending'}`}
+            >
+              {idx < stage ? '✓' : idx + 1}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -1447,15 +1608,35 @@ function AnalystPage(props) {
   const [contextTab, setContextTab] = useState('schema') // 'schema' | 'context'
   const [colSearch, setColSearch] = useState('')
   const [colTypeFilter, setColTypeFilter] = useState('all') // 'all' | 'numeric' | 'categorical' | 'boolean' | 'identifier'
+  const [localDraft, setLocalDraft] = useState(draft || '')
+  const isMobileScreen = useMediaQuery('(max-width: 860px)')
+  const [mobileTab, setMobileTab] = useState('chat') // 'chat' | 'schema'
 
-  if (!dataset) return <EmptyState onUpload={onUpload} onDemo={props.onDemo} />
+  useEffect(() => {
+    if (draft && draft !== localDraft) {
+      setLocalDraft(draft)
+    }
+  }, [draft])
 
-  const suggestions = [
+  const handleSend = (text) => {
+    const query = (typeof text === 'string' ? text : localDraft).trim()
+    if (!query || busy) return
+    setLocalDraft('')
+    setDraft?.('')
+    sendMessage(query)
+  }
+
+  const suggestions = dataset ? [
     'Give me an executive summary of this dataset',
     'Find the strongest correlations between numeric columns',
     'Are there any significant outliers in the data?',
     'What are the most important predictive features?',
     'Scan dataset health and missing values',
+  ] : [
+    '⚡ Load Titanic Demo & find correlations',
+    '⚡ Load Titanic Demo & scan missing values',
+    'What analyses can ARGUS perform?',
+    'Who created ARGUS and how does it work?',
   ]
 
   const columnsList = useMemo(() => {
@@ -1488,11 +1669,14 @@ function AnalystPage(props) {
   }, [columnsList, colSearch, colTypeFilter])
 
   const insertColumn = (colName) => {
-    setDraft((prev) => {
+    setLocalDraft((prev) => {
       const trimmed = prev.trim()
       if (!trimmed) return `${colName} `
       return `${trimmed} ${colName} `
     })
+    if (isMobileScreen) {
+      setMobileTab('chat')
+    }
   }
 
   return (
@@ -1547,23 +1731,41 @@ function AnalystPage(props) {
         </div>
       </div>
 
-      <div className="chat-layout">
+      {isMobileScreen && (
+        <MobileAnalystSwitcher
+          activeTab={mobileTab}
+          onChange={setMobileTab}
+          columnCount={columnsList.length}
+        />
+      )}
+
+      <div className={`chat-layout ${isMobileScreen ? `mobile-tab-${mobileTab}` : ''}`}>
         {/* Center Conversational Workspace */}
-        <div className="chat-panel">
-          <div className="chat-messages">
+        {(!isMobileScreen || mobileTab === 'chat') && (
+          <div className="chat-panel">
+            <div className="chat-messages">
             {messages.length === 0 && (
               <div className="starter">
                 <MessageSquare size={24} />
-                <strong>What would you like to understand about {dataset.filename}?</strong>
+                <strong>What would you like to understand about {dataset?.filename || 'your data or Argus'}?</strong>
                 <span>
                   Ask questions in plain English, or click one of the suggested analytical prompts below.
                 </span>
                 <div className="suggestions">
-                  {suggestions.slice(0, 3).map((s) => (
-                    <button key={s} onClick={() => sendMessage(s)}>
+                  {suggestions.slice(0, 4).map((s) => (
+                    <button key={s} onClick={() => handleSend(s)}>
                       {s}
                     </button>
                   ))}
+                  {!dataset && props.onDemo && (
+                    <button
+                      key="load-demo-btn"
+                      onClick={props.onDemo}
+                      style={{ borderColor: 'rgba(239, 159, 39, 0.4)', color: '#EF9F27' }}
+                    >
+                      ⚡ Load Titanic Demo
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -1591,7 +1793,7 @@ function AnalystPage(props) {
                     <AnalysisResultCard
                       result={message.result}
                       onExplainFurther={() =>
-                        sendMessage(`Explain this finding in more detail: ${message.result.title}`)
+                        handleSend(`Explain this finding in more detail: ${message.result.title}`)
                       }
                       onExplore={() => setPage('explore')}
                       onGenerateReport={triggerReportGeneration}
@@ -1602,15 +1804,7 @@ function AnalystPage(props) {
               </div>
             ))}
 
-            {busy && (
-              <div className="message assistant">
-                <div className="message-avatar">A</div>
-                <div className="thinking">
-                  <LoaderCircle size={16} className="spin" />
-                  <span>ARGUS is analyzing your question...</span>
-                </div>
-              </div>
-            )}
+            {busy && <ReasoningProgressTicker />}
           </div>
 
           {/* Quick Column Mention Bar */}
@@ -1634,31 +1828,33 @@ function AnalystPage(props) {
           )}
 
           {/* Composer */}
-          <form className="composer" onSubmit={(e) => { e.preventDefault(); sendMessage(draft) }}>
+          <form className="composer" onSubmit={(e) => { e.preventDefault(); handleSend(localDraft) }}>
             <textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              value={localDraft}
+              onChange={(e) => setLocalDraft(e.target.value)}
               placeholder="Ask ARGUS about your data (e.g., 'Is there a relationship between age and fare?')..."
               rows="1"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
-                  sendMessage(draft)
+                  handleSend(localDraft)
                 }
               }}
             />
             <button
               type="submit"
               className="send-button"
-              disabled={!draft.trim() || busy}
+              disabled={!localDraft.trim() || busy}
               aria-label="Send question"
             >
               <Play size={16} />
             </button>
           </form>
         </div>
+      )}
 
-        {/* Right Context & Dataset Schema Inspector */}
+      {/* Right Context & Dataset Schema Inspector */}
+      {(!isMobileScreen || mobileTab === 'schema') && (
         <aside className="context-panel analyst-dataset-inspector">
           <div className="context-tab-bar">
             <button
@@ -1766,9 +1962,10 @@ function AnalystPage(props) {
                           <button
                             type="button"
                             className="col-action-btn highlight"
-                            onClick={() =>
+                            onClick={() => {
+                              if (isMobileScreen) setMobileTab('chat')
                               sendMessage(`Analyze the column '${col.name}' in detail. What are its distribution, patterns, outliers, and key takeaways?`)
-                            }
+                            }}
                             title="Ask AI Analyst about this column"
                           >
                             Ask AI ↗
@@ -1785,15 +1982,15 @@ function AnalystPage(props) {
               {/* Dataset Overview Card */}
               <div className="dataset-summary-card">
                 <span className="eyebrow">DATASET OVERVIEW</span>
-                <strong title={dataset.filename}>{dataset.filename}</strong>
+                <strong title={dataset?.filename || 'Titanic Sample'}>{dataset?.filename || 'Titanic Demo Dataset'}</strong>
                 <div className="stat-grid">
                   <div>
                     <span>Rows</span>
-                    <strong>{dataset.rows?.toLocaleString()}</strong>
+                    <strong>{dataset?.rows?.toLocaleString() || (profile?.rows?.toLocaleString() ?? '891')}</strong>
                   </div>
                   <div>
                     <span>Columns</span>
-                    <strong>{dataset.columns}</strong>
+                    <strong>{dataset?.columns ?? (profile?.columns ?? 12)}</strong>
                   </div>
                   <div>
                     <span>Health</span>
@@ -1857,6 +2054,7 @@ function AnalystPage(props) {
             </button>
           </div>
         </aside>
+      )}
       </div>
     </section>
   )

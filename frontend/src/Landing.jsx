@@ -1,39 +1,118 @@
 import { useEffect, useRef, useState } from 'react'
-import { Menu, X, User as UserIcon, Star, ArrowRight, Zap, Sparkles, ChevronDown } from 'lucide-react'
+import {
+  Menu,
+  X,
+  User as UserIcon,
+  Star,
+  ArrowRight,
+  BarChart3,
+  Workflow,
+  Zap,
+  Sparkles,
+  ChevronDown,
+  Layers,
+  Bot,
+  BrainCircuit,
+  Database,
+  FileText,
+  Activity,
+  Home,
+  ShieldCheck,
+  Info,
+} from 'lucide-react'
 import { useScrollLock, useReveal, useCountUp, useScrolled, useMediaQuery } from './hooks'
-import { GroundedFlow, PipelineShowcase } from './components/HowItWorks'
-import { HeroDataPulse, BentoFeatures, WorkspaceShowcase, ArgusFooter } from './components/LandingComponents'
-import AuthModal from './components/AuthModal'
+import { MobilePhaseChrome, PhaseProgress, MobilePipelineStepper, MobileChartShowcase } from './components/MobilePerfect'
+import { GroundedFlow } from './components/HowItWorks'
+import { HeroDataPulse, WhatArgusDoesShowcase, MobileWhatWeDoCards, BentoFeatures, WorkspaceShowcase, ArgusFooter } from './components/LandingComponents'
+import {
+  AgentStateGraph,
+  ArgusFlowMap,
+  ChartLab,
+  ExplainerPair,
+  GroundingProof,
+  SandboxGate,
+  SpeedRace,
+} from './components/ArgusExplainers'
+import ProjectOverview from './components/ProjectOverview'
 import * as api from './api'
 
-/* Argus Landing Page
+/* ── Argus Landing Page (Samvaad-Style Viewport Snap & Responsive Architecture) ──
    Automated Exploratory Data Analysis with Grounded AI Intelligence
-   
-   Motion lives in theme.css under "Motion layer" — GPU compositor friendly.
-   All styles strictly scoped to .arg-* and .arg-landing to protect the internal workspace. */
 
-const TYPED = ['in under 30 seconds', 'with AI intelligence', 'with zero code']
+   Phases:
+   1.  Home (#top)
+   2.  Project Intel (#overview — interactive tabbed deep explainer)
+   3.  Features (#features — EDA workbench)
+   4.  Pipeline (#pipeline — animated six-stage flow map)
+   5.  Agent graph (#agents — orchestration graph + AST gate)
+   6.  Chart engine (#charts — figure gallery + time saved)
+   7.  Workspace Studio (#gallery — interactive monitor preview)
+   8.  Architecture (#about — grounding proof & deterministic compute)
+   9.  FAQ (#faq)
+   10. Launch Studio (#auth-cta — final CTA & product footer)
+
+   Phases 4-6 and the grounding proof in 8 live in components/ArgusExplainers.jsx.
+*/
+
+const TYPED = ['in under 30 seconds', 'with zero hallucination', 'with local Python precision', 'with zero code required']
 
 const HERO_PILLS = [
-  ['⚡ 2.8s Fast Profiling', '#F97316', '#FAC775'],
-  ['● 100% Local Sandbox', '#1D9E75', '#5DCAA5'],
-  ['✦ 10+ Auto SVG Charts', '#EF9F27', '#FAC775'],
-  ['✓ Grounded AI Insights', '#38BDF8', '#7DD3FC'],
+  ['⚡ 2.8s Instant Profiling', '#F97316', '#FAC775'],
+  ['● 100% Local In-Memory Sandbox', '#1D9E75', '#5DCAA5'],
+  ['✦ 10+ Publication SVG Charts', '#EF9F27', '#FAC775'],
+  ['✓ Grounded AI Analyst Core', '#38BDF8', '#7DD3FC'],
 ]
 
 const SAMPLE_PROMPTS = [
-  { icon: '📊', short: 'Skew & Outliers', full: 'Analyze skewness & IQR outliers for Revenue' },
-  { icon: '⚡', short: 'Peak Margin Tiers', full: 'Which customer tier drives peak profit margin?' },
-  { icon: '🔍', short: 'Missing Imputations', full: 'Scan missingness & recommend median imputations' },
-  { icon: '📈', short: 'Correlation Matrix', full: 'Generate Spearman correlation matrix with p-values' },
+  { icon: '📊', short: 'Skew & Outliers', full: 'Analyze skewness & Tukey IQR outliers for Revenue' },
+  { icon: '⚡', short: 'Peak Margin Tiers', full: 'Which customer tier drives peak gross profit margin?' },
+  { icon: '🔍', short: 'Missing Imputations', full: 'Scan missingness & recommend median/mode imputations' },
+  { icon: '📈', short: 'Correlation Matrix', full: 'Compute Pearson & Spearman correlation with p-values' },
 ]
 
 const FAQS = [
-  ['Is my data uploaded or stored anywhere?', 'No. Your files are parsed locally in the Argus Python sandbox process and kept strictly in memory for your session only. Data is never persisted to databases or shared with third parties, and is purged immediately upon session close.'],
-  ['What file formats are supported?', 'CSV, TSV, TXT, Excel (XLSX, XLS), JSON, and Parquet. Encodings, delimiters, and tricky types (currency like "$1,200", dates, accounting negatives) are auto-detected with conversion reasons displayed.'],
-  ['Do I need to know Python or statistics?', 'No. All statistical computations run automatically with plain-English interpretations and recommendations. For data scientists, raw JSON statistics and Python snippets remain fully accessible.'],
-  ['How are AI answers grounded?', 'Argus runs deterministic statistical calculations in Python (pandas, SciPy, scikit-learn) first. The AI model only describes the exact figures calculated — it never fabricates numbers.'],
-  ['What happens if the AI provider is unavailable?', 'All core EDA features — data cleaning, histograms, correlations, health scoring, and report exports — continue running 100% locally without interruption.'],
+  ['Is my data uploaded, persisted, or shared with third parties?', 'Never. Files are parsed inside an ephemeral Python sandbox subprocess and kept strictly in local memory for your session only. Data is never persisted to databases, vector clouds, or shared with third parties, and is purged immediately upon session close or browser exit.'],
+  ['What file formats and complex schemas are supported?', 'CSV, TSV, TXT, Excel (XLSX, XLS, XLSM), JSON, JSONL, and Parquet up to 50MB. Encodings (UTF-8, Latin1, CP1252), delimiters (comma, semicolon, tab, pipe), and tricky types (currencies like "$1,200", dates, percentages, accounting negative parentheses) are auto-detected with clear conversion reasons.'],
+  ['How are AI insights mathematically grounded without hallucinations?', 'Traditional AI models fabricate plausible numbers. Argus computes all statistical figures in Python (pandas, SciPy, scikit-learn) first. The AI analyst acts strictly as an analytical narrator over the verified JSON results — it never guesses or fabricates a metric.'],
+  ['What is the AST Sandboxed execution engine?', 'Argus verifies all analytical Python code using an Abstract Syntax Tree (AST) parser before execution. Dangerous system calls (os, subprocess, network sockets, eval) are strictly rejected, ensuring secure, isolated computation in local sandboxes.'],
+  ['Do I need to know Python or statistics to use Argus?', 'No. All statistical summaries, distributions, Tukey fences, and feature importance rankings run automatically with plain-English interpretations and prescriptive next steps. Senior data scientists can still view raw JSON statistics and Python snippets whenever needed.'],
+  ['Can Argus run offline without internet connectivity?', 'Yes. All core statistical computing — automated type coercion, health scoring, Tukey anomaly fencing, Pearson/Spearman matrices, and exportable Python scripts — runs 100% locally in offline Python. The AI agent acts strictly as an orchestration planner and plain-English narrator over local JSON results; your raw dataset rows never leave your machine under any circumstances.'],
+]
+
+/* The scroll phases, in order. The side dot rail and mobile drawer list all 10,
+   while the desktop floating pill navbar displays 4 core high-impact anchors. */
+const LANDING_PHASES = [
+  { id: 'top', label: 'Home', short: 'Home', icon: Home },
+  { id: 'overview', label: 'Project Intel', short: 'Intel', icon: Info },
+  { id: 'features', label: 'Features', short: 'Features', icon: Zap },
+  { id: 'pipeline', label: 'Pipeline', short: 'Pipeline', icon: Workflow },
+  { id: 'agents', label: 'Agent graph', short: 'Agents', icon: Bot },
+  { id: 'charts', label: 'Chart engine', short: 'Charts', icon: BarChart3 },
+  { id: 'gallery', label: 'Workspace', short: 'Studio', icon: Database },
+  { id: 'about', label: 'Architecture', short: 'Architecture', icon: ShieldCheck },
+  { id: 'faq', label: 'FAQ', short: 'FAQ', icon: BrainCircuit },
+  { id: 'auth-cta', label: 'Get Started', short: 'Launch', icon: Sparkles },
+]
+
+/* Curated 6-phase journey tailored specifically for mobile viewports */
+const MOBILE_LANDING_PHASES = [
+  { id: 'top', label: 'Home', short: 'Home', icon: Home },
+  { id: 'overview', label: 'Project Intel', short: 'Intel', icon: Info },
+  { id: 'pipeline', label: '4-Step Pipeline', short: 'Pipeline', icon: Workflow },
+  { id: 'charts', label: 'Charts & Analysis', short: 'Charts', icon: BarChart3 },
+  { id: 'faq', label: 'FAQ', short: 'FAQ', icon: BrainCircuit },
+  { id: 'auth-cta', label: 'Launch Studio', short: 'Launch', icon: Sparkles },
+]
+
+const DESKTOP_NAV_ITEMS = [
+  { id: 'top', label: 'Home', matchIds: ['top'] },
+  { id: 'overview', label: 'Intel', matchIds: ['overview'] },
+  { id: 'features', label: 'Features', matchIds: ['features'] },
+  { id: 'pipeline', label: 'Pipeline', matchIds: ['pipeline'] },
+  { id: 'agents', label: 'Agents', matchIds: ['agents'] },
+  { id: 'charts', label: 'Charts', matchIds: ['charts', 'gallery'] },
+  { id: 'about', label: 'Architecture', matchIds: ['about'] },
+  { id: 'faq', label: 'FAQ', matchIds: ['faq', 'auth-cta'] },
 ]
 
 function useTypewriter(phrases) {
@@ -96,7 +175,6 @@ function Logo() {
       src="/argus_logo_opt.png"
       alt="Argus"
       onError={(e) => {
-        // Fallback to original logo if optimized not yet served
         if (!e.target.dataset.triedOriginal) {
           e.target.dataset.triedOriginal = 'true'
           e.target.src = '/argus_logo.png'
@@ -108,9 +186,9 @@ function Logo() {
   )
 }
 
-function Section({ id, alt, tag, tagColor, title, subtitle, children }) {
+function Section({ id, alt, tag, tagColor, title, subtitle, className = '', onNextPhase, children }) {
   return (
-    <section id={id} className={alt ? 'arg-section alt' : 'arg-section'}>
+    <section id={id} className={`arg-section landing-phase ${alt ? 'alt' : ''} ${className}`.trim()}>
       <div className="arg-inner">
         <Reveal className="arg-section-head">
           {tag && (
@@ -130,24 +208,211 @@ function Section({ id, alt, tag, tagColor, title, subtitle, children }) {
   )
 }
 
-const NAV_LINKS = [
-  ['#top', 'Home'],
-  ['#features', 'Features'],
-  ['#how-it-works', 'How it works'],
-  ['#gallery', 'Workspace'],
-  ['#about', 'Architecture'],
-  ['#faq', 'FAQ'],
-]
+function MobileHero({ typed, onEnter, onDemo, statsList, statsShown, statsRef, onScrollNext }) {
+  return (
+    <div className="arg-mobile-hero">
+      <div className="arg-hero-badge">
+        <span className="arg-pulse" />
+        <span>AUTOMATED EDA &amp; DATA INTELLIGENCE</span>
+      </div>
+
+      <h1 className="mobile-hero-h1">
+        Understand your data <br />
+        <span className="arg-type">{typed}</span>
+        <i className="arg-caret" />
+      </h1>
+
+      <p className="mobile-hero-sub">
+        Drop in raw CSV, Excel or Parquet. Argus types columns, scores dataset health, charts statistical distributions, and explains findings &mdash; 100% computed locally in Python.
+      </p>
+
+      <div className="mobile-hero-actions">
+        <button className="arg-btn-primary mobile-cta-btn" onClick={onEnter}>
+          <span>Upload your dataset &rarr;</span>
+        </button>
+        <button className="arg-btn-secondary mobile-demo-btn" onClick={onDemo}>
+          <Zap size={14} />
+          <span>Try Live Demo</span>
+        </button>
+      </div>
+
+      {/* Interactive Mobile What We Do Superpower Cards */}
+      <MobileWhatWeDoCards onEnter={onEnter} onDemo={onDemo} />
+
+      {/* Anchored Bottom 4-Stat Strip & Scroll Indicator */}
+      <div className="mobile-hero-bottom-dock">
+        <div className="mobile-hero-stats-strip" ref={statsRef}>
+          {statsList.map(([val, lbl]) => (
+            <div key={lbl} className="mobile-stat-cell">
+              <b>{val}</b>
+              <span>{lbl.split(' ')[0]}</span>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="mobile-scroll-hint"
+          onClick={() => onScrollNext?.()}
+          aria-label="Scroll to Project Overview"
+        >
+          <span>✦ Explore Argus Architecture</span>
+          <ChevronDown size={13} className="bounce-arrow" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function MobileArchitecture({ onDemo, onEnter, onNext }) {
+  const pillars = [
+    { title: 'Ephemeral RAM Memory', desc: 'Data lives strictly in volatile memory during your active session; zero database or cloud persistence.', icon: Database, color: '#1D9E75' },
+    { title: 'AST Code-Gating Gate', desc: 'Analytical execution is parsed via Abstract Syntax Tree. Calls to OS, subprocesses or sockets are blocked.', icon: ShieldCheck, color: '#7F77DD' },
+    { title: 'Subprocess Isolation', desc: 'Python compute is fenced inside an unprivileged worker subprocess with strict memory & CPU quotas.', icon: Layers, color: '#38BDF8' },
+    { title: 'Deterministic Math Kernel', desc: 'All equations run in native NumPy, SciPy, and pandas; AI models only narrate verified JSON telemetry.', icon: BrainCircuit, color: '#EF9F27' },
+  ]
+
+  return (
+    <div className="arg-mobile-architecture">
+      <div className="mobile-arch-lead">
+        <p>
+          Eliminate 45m of EDA boilerplate. Every calculation runs locally in an isolated Python sandbox &mdash; with zero cloud data retention.
+        </p>
+      </div>
+
+      <div className="mobile-arch-grid">
+        {pillars.map((p) => {
+          const Icon = p.icon
+          return (
+            <div key={p.title} className="mobile-arch-card" style={{ '--accent': p.color }}>
+              <div className="mobile-arch-card-head">
+                <Icon size={14} style={{ color: p.color }} />
+                <h4>{p.title}</h4>
+              </div>
+              <p>{p.desc}</p>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="mobile-arch-flow">
+        <div className="arch-flow-title">
+          <span className="dot" />
+          <span>ZERO-TRUST EXECUTION PIPELINE</span>
+        </div>
+        <div className="arch-flow-steps">
+          <span className="flow-step">💬 User Query</span>
+          <span className="flow-arr">→</span>
+          <span className="flow-step">🛡️ AST Gate</span>
+          <span className="flow-arr">→</span>
+          <span className="flow-step">🐍 Ephemeral REPL</span>
+          <span className="flow-arr">→</span>
+          <span className="flow-step">📊 Grounded Telemetry</span>
+        </div>
+      </div>
+
+      <div className="mobile-arch-footer">
+        <button className="mobile-cta-btn" onClick={onDemo}>
+          <Zap size={13} />
+          <span>⚡ Try Live Demo</span>
+        </button>
+        <button className="mobile-scroll-hint" onClick={onNext}>
+          <span>✦ Explore Questions &amp; Answers</span>
+          <ChevronDown size={13} className="bounce-arrow" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function MobileFaq({ faqs, onDemo, onNext }) {
+  const [activeFaq, setActiveFaq] = useState(0)
+  const current = faqs[activeFaq]
+
+  const categories = [
+    { label: 'Privacy', icon: '🔒' },
+    { label: 'Formats', icon: '📁' },
+    { label: 'Grounding', icon: '⚖️' },
+    { label: 'Sandbox', icon: '🛡️' },
+    { label: 'No-Code', icon: '⚡' },
+    { label: 'Offline', icon: '🌐' },
+  ]
+
+  return (
+    <div className="arg-mobile-faq">
+      <div className="mobile-faq-tabs">
+        {categories.map((c, idx) => (
+          <button
+            key={c.label}
+            className={`mobile-faq-tab ${activeFaq === idx ? 'active' : ''}`}
+            onClick={() => setActiveFaq(idx)}
+          >
+            <span>{c.icon} {c.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="mobile-faq-spotlight-card">
+        <div className="faq-spotlight-head">
+          <span className="faq-num">QUESTION {activeFaq + 1} OF {faqs.length}</span>
+          <span className="faq-topic">{categories[activeFaq]?.label?.toUpperCase()} INTEL</span>
+        </div>
+        <h4 className="faq-spotlight-q">{current[0]}</h4>
+        <p className="faq-spotlight-a">{current[1]}</p>
+        <div className="faq-spotlight-badge">
+          <span className="badge-dot" />
+          <span>100% In-Memory Python Engine</span>
+        </div>
+      </div>
+
+      <div className="mobile-faq-controls">
+        <div className="faq-nav-btns">
+          <button
+            disabled={activeFaq === 0}
+            onClick={() => setActiveFaq((p) => Math.max(0, p - 1))}
+            className="faq-nav-btn"
+          >
+            &larr; Prev
+          </button>
+          <div className="faq-dots">
+            {faqs.map((_, i) => (
+              <span
+                key={i}
+                className={`f-dot ${i === activeFaq ? 'active' : ''}`}
+                onClick={() => setActiveFaq(i)}
+              />
+            ))}
+          </div>
+          <button
+            disabled={activeFaq === faqs.length - 1}
+            onClick={() => setActiveFaq((p) => Math.min(faqs.length - 1, p + 1))}
+            className="faq-nav-btn"
+          >
+            Next &rarr;
+          </button>
+        </div>
+        <button className="mobile-scroll-hint" onClick={onNext}>
+          <span>✦ Launch Argus Studio</span>
+          <ChevronDown size={13} className="bounce-arrow" />
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRating }) {
+  const scrollRef = useRef(null)
+  const activeRef = useRef(0)
+  const [activePhaseIdx, setActivePhaseIdx] = useState(0)
   const typed = useTypewriter(TYPED)
   const [openFaq, setOpenFaq] = useState(0)
   const [navOpen, setNavOpen] = useState(false)
-  const scrolled = useScrolled(24)
   const isMobile = useMediaQuery('(max-width: 768px)')
   const [statsRef, statsShown] = useReveal({ threshold: 0.35 })
   const [ratingStats, setRatingStats] = useState(null)
+  /* Samvaad pattern: progress hairline painted via ref (no re-render per pixel). */
+  const progressRef = useRef(null)
 
+  // Fetch verified rating statistics
   useEffect(() => {
     let cancelled = false
     api.getRatingStats()
@@ -161,6 +426,197 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
   const closeNav = () => setNavOpen(false)
   useScrollLock(navOpen)
 
+  // Smooth phase jumping
+  // Smooth phase jumping
+  const goToPhase = (id) => {
+    const root = scrollRef.current
+    const target = root?.querySelector(`#${id}`)
+    if (!root || !target) return
+    const isFirstPage = id === 'top'
+    // Permanent visible on first page; 2s auto-hide on all other sections
+    showTaskbar(isFirstPage ? 0 : 2000)
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  // Auto-hide taskbar state & robust ref tracking (Samvaad reference architecture)
+  const [taskbarVisible, setTaskbarVisible] = useState(true)
+  const taskbarVisibleRef = useRef(true)
+  const taskbarHideTimerRef = useRef(null)
+
+  const showTaskbar = (autoHideDelayMs = 0) => {
+    if (!taskbarVisibleRef.current) {
+      taskbarVisibleRef.current = true
+      setTaskbarVisible(true)
+    }
+    if (taskbarHideTimerRef.current) {
+      clearTimeout(taskbarHideTimerRef.current)
+      taskbarHideTimerRef.current = null
+    }
+    if (autoHideDelayMs > 0) {
+      taskbarHideTimerRef.current = setTimeout(() => {
+        hideTaskbar()
+      }, autoHideDelayMs)
+    }
+  }
+
+  const hideTaskbar = () => {
+    if (taskbarHideTimerRef.current) {
+      clearTimeout(taskbarHideTimerRef.current)
+      taskbarHideTimerRef.current = null
+    }
+    // Never hide taskbar on the very first page
+    if (activeRef.current === 0) {
+      return
+    }
+    if (taskbarVisibleRef.current) {
+      taskbarVisibleRef.current = false
+      setTaskbarVisible(false)
+    }
+  }
+
+  // 1. Initial land on very first page: permanent visible, no auto-hide
+  useEffect(() => {
+    showTaskbar(0)
+    return () => {
+      if (taskbarHideTimerRef.current) clearTimeout(taskbarHideTimerRef.current)
+    }
+  }, [])
+
+  // 2. When active section changes:
+  // On very first page: never hide. On all other sections: visible for 2s then hides
+  useEffect(() => {
+    const isFirstPage = activePhaseIdx === 0
+    showTaskbar(isFirstPage ? 0 : 2000)
+  }, [activePhaseIdx])
+
+  // 3. User interaction & mobile touch: reveal on movement/scroll, auto-hide after 2s on other sections
+  useEffect(() => {
+    const root = scrollRef.current
+    if (!root) return undefined
+
+    let lastScrollTop = root.scrollTop
+    let touchStartY = 0
+
+    const handleScrollActivity = () => {
+      const currentScroll = root.scrollTop
+      const scrollDiff = currentScroll - lastScrollTop
+
+      // Ignore micro jitter
+      if (Math.abs(scrollDiff) < 6) return
+
+      lastScrollTop = currentScroll
+      const isFirstPage = activeRef.current === 0
+
+      // When moving/scrolling pages: taskbar appears immediately, and will hide after 2s (never on first page)
+      showTaskbar(isFirstPage ? 0 : 2000)
+    }
+
+    const handleTouchStart = (e) => {
+      touchStartY = e.touches[0].clientY
+      const isFirstPage = activeRef.current === 0
+      showTaskbar(isFirstPage ? 0 : 2000)
+    }
+
+    const handleTouchMove = () => {
+      const isFirstPage = activeRef.current === 0
+      showTaskbar(isFirstPage ? 0 : 2000)
+    }
+
+    const handlePointerTop = (e) => {
+      const y = e.touches ? e.touches[0].clientY : e.clientY
+      if (y <= 55) {
+        const isFirstPage = activeRef.current === 0
+        showTaskbar(isFirstPage ? 0 : 2000)
+      }
+    }
+
+    root.addEventListener('scroll', handleScrollActivity, { passive: true })
+    window.addEventListener('touchstart', handleTouchStart, { passive: true })
+    window.addEventListener('touchmove', handleTouchMove, { passive: true })
+    window.addEventListener('pointermove', handlePointerTop, { passive: true })
+
+    return () => {
+      root.removeEventListener('scroll', handleScrollActivity)
+      window.removeEventListener('touchstart', handleTouchStart)
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('pointermove', handlePointerTop)
+    }
+  }, [])
+
+  const activePhases = isMobile ? MOBILE_LANDING_PHASES : LANDING_PHASES
+
+  // Active phase index tracking for side phase navigation (fast offset calculation, zero layout-thrashing)
+  useEffect(() => {
+    const root = scrollRef.current
+    if (!root) return undefined
+
+    const elements = activePhases.map((p) => root.querySelector(`#${p.id}`))
+    let ticking = false
+
+    const updateActive = () => {
+      ticking = false
+      const currentScroll = root.scrollTop + root.clientHeight * 0.35
+      let current = 0
+      for (let i = elements.length - 1; i >= 0; i--) {
+        const el = elements[i]
+        if (el && el.offsetTop <= currentScroll) {
+          current = i
+          break
+        }
+      }
+      if (root.scrollTop + root.clientHeight >= root.scrollHeight - 50) {
+        current = activePhases.length - 1
+      }
+      if (current !== activeRef.current) {
+        activeRef.current = current
+        setActivePhaseIdx(current)
+      }
+      /* Paint the top progress hairline without a state update. */
+      if (progressRef.current) {
+        const max = root.scrollHeight - root.clientHeight
+        const p = max > 0 ? Math.min(1, Math.max(0, root.scrollTop / max)) : 0
+        progressRef.current.style.transform = `scaleX(${p})`
+      }
+    }
+
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true
+        requestAnimationFrame(updateActive)
+      }
+    }
+
+    updateActive()
+    root.addEventListener('scroll', onScroll, { passive: true })
+    return () => root.removeEventListener('scroll', onScroll)
+  }, [activePhases])
+
+  // Keyboard navigation between sections
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.repeat) return
+      if (e.target !== document.body && e.target !== scrollRef.current) return
+      if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+        e.preventDefault()
+        const next = Math.min(activeRef.current + 1, activePhases.length - 1)
+        goToPhase(activePhases[next].id)
+      } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+        e.preventDefault()
+        const prev = Math.max(activeRef.current - 1, 0)
+        goToPhase(activePhases[prev].id)
+      } else if (e.key === 'Home') {
+        e.preventDefault()
+        goToPhase('top')
+      } else if (e.key === 'End') {
+        e.preventDefault()
+        goToPhase('auth-cta')
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [activePhases])
+
+
   const statsList = [
     ['13+', 'Master datasets'],
     [ratingStats?.avg ? `${ratingStats.avg.toFixed(1)}★` : '5.0★', ratingStats?.count ? `User rating (${ratingStats.count})` : 'User rating'],
@@ -169,29 +625,53 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
   ]
 
   return (
-    <div className="arg-landing">
-      {/* ── Navigation Bar ────────────────────────────────────────────── */}
-      <nav className={scrolled ? 'arg-nav scrolled' : 'arg-nav'}>
-        <a className="arg-nav-brand" href="#top" onClick={closeNav}>
+    <div className="arg-landing landing-scroll" ref={scrollRef}>
+      {/* Top scroll-progress hairline (Samvaad pattern, ref-painted) */}
+      <div className="mp-scroll-progress" aria-hidden="true">
+        <i ref={progressRef} />
+      </div>
+
+      {/* ── Fixed Smart Auto-Hiding Taskbar (Samvaad Pattern) ──────────── */}
+      <nav
+        className={`arg-nav ${!taskbarVisible ? 'is-taskbar-hidden' : ''}`}
+        onClick={() => {
+          if (!taskbarVisible) {
+            showTaskbar(activeRef.current === 0 ? 0 : 2000)
+          }
+        }}
+        onMouseEnter={() => showTaskbar(0)}
+        onMouseLeave={() => showTaskbar(activeRef.current === 0 ? 0 : 2000)}
+      >
+        <a className="arg-nav-brand" href="#top" onClick={(e) => { e.preventDefault(); goToPhase('top'); closeNav(); }}>
           <Logo />
-          <span className="arg-nav-word">Argus</span>
+          <div className="arg-nav-brand-text">
+            <span className="arg-nav-word">Argus</span>
+            <span className="arg-nav-tagline">Automated EDA</span>
+          </div>
         </a>
 
-        {/* Desktop Navigation Links */}
+        {/* Desktop Navigation Links (Clean 4-Pillar Ergonomics) */}
         <div className="arg-nav-desktop-center">
           <div className="arg-nav-links-desktop">
-            {NAV_LINKS.map(([href, label]) => (
-              <a className="arg-nav-link" href={href} key={href}>{label}</a>
-            ))}
+            {DESKTOP_NAV_ITEMS.map(({ id, label, matchIds }) => {
+              const currentPhaseId = LANDING_PHASES[activePhaseIdx]?.id
+              const isActive = matchIds.includes(currentPhaseId)
+              return (
+                <a
+                  className={`arg-nav-link ${isActive ? 'active' : ''}`}
+                  href={`#${id}`}
+                  key={id}
+                  onClick={(e) => { e.preventDefault(); goToPhase(id); }}
+                >
+                  {label}
+                </a>
+              )
+            })}
           </div>
         </div>
 
         {/* Desktop Actions */}
         <div className="arg-nav-actions-desktop">
-          <button className="arg-nav-demo-btn" onClick={onDemo} title="Try instantly with demo data">
-            <Zap size={13} />
-            <span>Try Live Demo</span>
-          </button>
           {user ? (
             <button className="arg-nav-cta" onClick={onEnter}>
               Workspace ({user.name?.split(' ')[0] || 'User'})
@@ -209,30 +689,40 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
         </div>
 
         {/* Mobile Hamburger Toggle */}
-        <button
-          className="arg-nav-toggle"
-          aria-label={navOpen ? 'Close menu' : 'Open menu'}
-          aria-expanded={navOpen}
-          onClick={() => setNavOpen((open) => !open)}
-        >
-          {navOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        <div className="arg-nav-mobile-right">
+          <button
+            className="arg-nav-toggle"
+            aria-label={navOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={navOpen}
+            onClick={() => setNavOpen((open) => !open)}
+          >
+            {navOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
 
         {/* Mobile Navigation Drawer */}
         <div className={navOpen ? 'arg-nav-drawer open' : 'arg-nav-drawer'}>
           <div className="arg-nav-mobile-header">
             <div className="mobile-brand">
               <Logo />
-              <span>Argus EDA</span>
+              <span>Argus EDA Platform</span>
             </div>
             <button className="mobile-close" onClick={closeNav} aria-label="Close menu">
               <X size={18} />
             </button>
           </div>
           <div className="arg-nav-mobile-list">
-            {NAV_LINKS.map(([href, label]) => (
-              <a className="arg-nav-link" href={href} key={href} onClick={closeNav}>
-                <span>{label}</span>
+            {activePhases.map(({ id, label, icon: Icon }) => (
+              <a
+                className={`arg-nav-link ${activePhases[activePhaseIdx]?.id === id ? 'active' : ''}`}
+                href={`#${id}`}
+                key={id}
+                onClick={(e) => { e.preventDefault(); closeNav(); goToPhase(id); }}
+              >
+                <div className="mobile-link-title">
+                  <Icon size={16} className="mobile-link-icon" />
+                  <span>{label}</span>
+                </div>
                 <ArrowRight size={14} className="mobile-link-arrow" />
               </a>
             ))}
@@ -261,248 +751,426 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
       </nav>
       {navOpen && <div className="arg-nav-scrim" onClick={closeNav} />}
 
-      {/* ── Hero Section (Viewport Stage) ────────────────────────────── */}
-      <header className="arg-hero" id="top">
-        <div className="arg-hero-inner">
-          <div className="arg-hero-content">
-            <div className="arg-hero-badge">
-              <span className="arg-pulse" />
-              <span>AI-POWERED AUTOMATED EDA PLATFORM</span>
-            </div>
+      {/* ── Side Phase Dot Navigation (Samvaad Ergonomics) ────────────── */}
+      <nav className="arg-phase-nav" aria-label="Page Sections Navigation">
+        {activePhases.map((phase, index) => (
+          <button
+            key={phase.id}
+            className={`arg-phase-dot ${index === activePhaseIdx ? 'is-active' : ''}`}
+            onClick={() => goToPhase(phase.id)}
+            aria-label={`Jump to ${phase.label}`}
+          >
+            <span className="arg-phase-dot-tooltip">{phase.label}</span>
+          </button>
+        ))}
+      </nav>
 
-            <h1>
-              Understand your data{' '}
-              <span className="arg-hero-title-break"><br /></span>
-              <span className="arg-type">{typed}</span>
-              <i className="arg-caret" />
-            </h1>
+      {isMobile ? (
+        <>
+          {/* ============================================================
+              MOBILE PHASE 1: HERO VIEWPORT
+              ============================================================ */}
+          <header className="arg-hero landing-phase phase-hero" id="top">
+            <MobileHero
+              typed={typed}
+              onEnter={onEnter}
+              onDemo={onDemo}
+              statsList={statsList}
+              statsShown={statsShown}
+              statsRef={statsRef}
+              onScrollNext={() => goToPhase('overview')}
+            />
+          </header>
 
-            <p className="arg-hero-sub">
-              Instant statistical profiling, outlier fencing, and publication-ready charts from raw CSV, Excel, or Parquet files &mdash; powered by local Python engines with zero code.
-            </p>
+          {/* ============================================================
+              MOBILE PHASE 2: PROJECT INTEL
+              ============================================================ */}
+          <Section
+            id="overview"
+            alt
+            onNextPhase={goToPhase}
+            tag="PROJECT OVERVIEW"
+            tagColor="#F97316"
+            title="What Argus is, in its own words"
+            subtitle="Ask the five questions people actually ask — the purpose, the grounding, the privacy boundary, the agent layer and the stack."
+          >
+            <ProjectOverview onEnter={onEnter} onDemo={onDemo} onNextPhase={goToPhase} />
+          </Section>
 
-            <div className="arg-hero-actions">
-              <button className="arg-btn-primary" onClick={onEnter}>
-                <span>Upload your dataset &rarr;</span>
-              </button>
-              <button className="arg-btn-secondary" onClick={onDemo}>
-                <Zap size={15} />
-                <span>Try Live Demo</span>
-              </button>
-            </div>
+          {/* ============================================================
+              MOBILE PHASE 3: 4-STEP INGESTION PIPELINE
+              ============================================================ */}
+          <Section
+            id="pipeline"
+            alt
+            onNextPhase={goToPhase}
+            className="phase-explainer"
+            tag="4-STEP INGESTION PIPELINE"
+            tagColor="#F97316"
+            title="From File to Verified Payload"
+            subtitle="Tap each stage to see exactly how your data transforms safely in local memory."
+          >
+            <MobilePipelineStepper onDemo={onDemo} onEnter={onEnter} />
+          </Section>
 
-            {/* Interactive Query Chips (Samvaad style) */}
-            <div className="arg-hero-prompts-tray">
-              <span className="tray-label">EXPLORE INSTANTLY:</span>
-              <div className="tray-chips">
-                {SAMPLE_PROMPTS.map((prompt, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    className="arg-prompt-chip"
-                    onClick={onDemo}
-                    title="Explore with live demo dataset"
-                  >
-                    <span className="chip-icon">{prompt.icon}</span>
-                    <span className="chip-text">{isMobile ? prompt.short : prompt.full}</span>
+          {/* ============================================================
+              MOBILE PHASE 4: CHARTS & ANALYSIS SHOWCASE
+              ============================================================ */}
+          <Section
+            id="charts"
+            onNextPhase={goToPhase}
+            className="phase-explainer"
+            tag="CHART & INSIGHT SHOWCASE"
+            tagColor="#EF9F27"
+            title="Real Computed Visualizations"
+            subtitle="Deterministic figures drawn from local statistics — zero hallucinations, 100% verified."
+          >
+            <MobileChartShowcase onDemo={onDemo} onEnter={onEnter} />
+          </Section>
+
+          {/* ============================================================
+              MOBILE PHASE 5: QUESTIONS & ANSWERS (FAQ)
+              ============================================================ */}
+          <Section
+            id="faq"
+            alt
+            onNextPhase={goToPhase}
+            tag="FAQ"
+            tagColor="#E24B4A"
+            title="Questions, answered"
+            subtitle="Clear facts on data privacy, air-gapped Python execution, AST sandboxing, and our grounded multi-agent architecture."
+          >
+            <MobileFaq faqs={FAQS} onDemo={onDemo} onNext={() => goToPhase('auth-cta')} />
+          </Section>
+
+          {/* ============================================================
+              MOBILE PHASE 6: FINAL LAUNCH STAGE + UNIFIED FOOTER
+              ============================================================ */}
+          <section className="arg-cta landing-phase phase-cta" id="auth-cta">
+            <div className="arg-cta-container">
+              <Reveal className="arg-cta-hero-card">
+                <div className="arg-cta-badge">
+                  <Sparkles size={13} />
+                  <span>START IN SECONDS · ZERO SETUP</span>
+                </div>
+                <h2>Point Argus at your next dataset</h2>
+                <p>
+                  Deterministic statistical profiling, Tukey IQR fences, correlation matrices, and grounded AI analyst narration.
+                  100% local Python sandbox — no data leaves your session.
+                </p>
+                <div className="arg-cta-actions">
+                  {user ? (
+                    <button className="arg-btn-primary cta-main-btn" onClick={onEnter}>
+                      <span>Open Workspace ({user.name?.split(' ')[0] || 'User'}) &rarr;</span>
+                    </button>
+                  ) : (
+                    <button className="arg-btn-primary cta-main-btn" onClick={() => onOpenAuth?.('signup')}>
+                      <span>Get Started Free &rarr;</span>
+                    </button>
+                  )}
+                  <button className="arg-btn-secondary cta-demo-btn" onClick={onDemo}>
+                    <Zap size={14} />
+                    <span>Try Live Demo</span>
                   </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="arg-hero-pills">
-              {HERO_PILLS.map(([label, bg, fg], index) => (
-                <span
-                  key={label}
-                  className="arg-pill"
-                  style={{ background: `${bg}22`, color: fg, '--d': `${index * 420}ms` }}
-                >
-                  {label}
-                </span>
-              ))}
-            </div>
-
-            {/* ── Stats Strip ────────────────────────────────────────── */}
-            <div className="arg-stats" ref={statsRef}>
-              {statsList.map(([value, label]) => (
-                <Stat key={label} value={value} label={label} active={statsShown} />
-              ))}
-            </div>
-          </div>
-
-          {/* ── Interactive Hero Data Pulse Preview (Anchors the Hero) ── */}
-          <div className="arg-hero-visual">
-            <HeroDataPulse onEnter={onEnter} onDemo={onDemo} />
-          </div>
-        </div>
-      </header>
-
-      <div className="arg-divider" />
-
-      {/* ── Core Features Section ────────────────────────────────────── */}
-      <Section
-        id="features"
-        tag="FEATURES"
-        tagColor="#7F77DD"
-        title="Everything EDA, automated"
-        subtitle="Deterministic Python precision meets grounded AI narration"
-      >
-        <BentoFeatures />
-      </Section>
-
-      <div className="arg-divider" />
-
-      {/* ── How It Works (Pipeline Showcase) ─────────────────────────── */}
-      <Section
-        id="how-it-works"
-        alt
-        tag="PROCESS FLOW"
-        tagColor="#EF9F27"
-        title="Data to Insight in 4 Steps"
-        subtitle="No maintenance. No setup. No learning curve."
-      >
-        <PipelineShowcase />
-      </Section>
-
-      <div className="arg-divider" />
-
-      {/* ── Gallery / Interactive Workspace Studio ───────────────────── */}
-      <Section
-        id="gallery"
-        tag="WORKSPACE STUDIO"
-        tagColor="#38BDF8"
-        title="See the live workspace in action"
-        subtitle="The interactive analysis environment you land in after your first upload"
-      >
-        <WorkspaceShowcase onEnter={onEnter} onDemo={onDemo} />
-      </Section>
-
-      <div className="arg-divider" />
-
-      {/* ── Architecture & Philosophy ────────────────────────────────── */}
-      <Section
-        id="about"
-        alt
-        tag="ARCHITECTURE"
-        tagColor="#1D9E75"
-        title="Why Argus exists"
-        subtitle="Deterministic computing meets grounded natural-language intelligence"
-      >
-        <div className="arg-about">
-          <Reveal className="arg-about-lead">
-            <p className="lead-highlight">
-              Eliminate 45 minutes of manual EDA boilerplate on every new dataset. Argus profiles health, resolves data types, detects mathematical anomalies, and plots 10+ distributions in seconds.
-            </p>
-            <p className="lead-sub">
-              Every metric is deterministically calculated by local Python engines (pandas, SciPy, scikit-learn) inside an AST-sandboxed sandbox. AI intelligence narrates findings &mdash; with absolute mathematical truth.
-            </p>
-          </Reveal>
-          <div className="arg-grid-3" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
-            <Reveal as="article" className="arg-card" delay={60} style={{ '--accent': '#1D9E75' }}>
-              <h3>Grounded Truth</h3>
-              <p>Deterministic Python computation in pandas and SciPy, zero model hallucination.</p>
-            </Reveal>
-            <Reveal as="article" className="arg-card" delay={120} style={{ '--accent': '#7F77DD' }}>
-              <h3>AST Sandboxed</h3>
-              <p>Secure isolated process execution with rigorous AST syntax gating.</p>
-            </Reveal>
-            <Reveal as="article" className="arg-card" delay={180} style={{ '--accent': '#EF9F27' }}>
-              <h3>Transparent</h3>
-              <p>Missingness, skewness, and errors reported honestly with actionable next steps.</p>
-            </Reveal>
-            <Reveal as="article" className="arg-card" delay={240} style={{ '--accent': '#F97316' }}>
-              <h3>Instant Speed</h3>
-              <p>Full dataset profiling and 10+ publication-ready charts in under 3 seconds.</p>
-            </Reveal>
-          </div>
-          <GroundedFlow />
-        </div>
-      </Section>
-
-      <div className="arg-divider" />
-
-      {/* ── FAQ Section ──────────────────────────────────────────────── */}
-      <Section id="faq" tag="FAQ" tagColor="#E24B4A" title="Questions, answered">
-        <div className="arg-inner" style={{ maxWidth: 860 }}>
-          {FAQS.map(([question, answer], index) => {
-            const open = openFaq === index
-            return (
-              <Reveal
-                className={open ? 'arg-faq-item open' : 'arg-faq-item'}
-                key={question}
-                delay={index * 60}
-              >
-                <button
-                  className="arg-faq-q"
-                  aria-expanded={open}
-                  aria-controls={`arg-faq-a-${index}`}
-                  onClick={() => setOpenFaq(open ? -1 : index)}
-                >
-                  <span>{question}</span>
-                  <div className="arg-faq-toggle-icon" aria-hidden="true">
-                    <ChevronDown size={18} className={open ? 'rotated' : ''} />
-                  </div>
-                </button>
-                <div className="arg-faq-a-wrap" id={`arg-faq-a-${index}`} aria-hidden={!open}>
-                  <div><p className="arg-faq-a">{answer}</p></div>
+                </div>
+                <div className="arg-cta-trust-pills">
+                  <span className="trust-pill">🔒 100% In-Memory Python</span>
+                  <span className="trust-pill-dot">•</span>
+                  <span className="trust-pill">📊 10+ Publication SVG Charts</span>
+                  <span className="trust-pill-dot">•</span>
+                  <span className="trust-pill">⚡ &lt;3s Runtime</span>
                 </div>
               </Reveal>
-            )
-          })}
-        </div>
-      </Section>
-
-      {/* ── Final Call to Action Stage (Unified with Footer) ──────── */}
-      <div className="arg-cta" id="auth-cta">
-        <div className="arg-cta-grid">
-          <Reveal className="arg-cta-lead">
-            <div className="arg-cta-badge">
-              <Sparkles size={13} />
-              <span>START IN SECONDS</span>
             </div>
-            <h2>Point Argus at your next dataset</h2>
-            <p>No setup, no schema, no code. Upload a file and start exploring instantly.</p>
-            <div className="arg-hero-actions" style={{ marginBottom: user ? 0 : 20 }}>
-              <button className="arg-btn-primary" onClick={onEnter}>
-                {user ? 'Open Workspace →' : 'Upload your dataset →'}
-              </button>
-              <button className="arg-btn-secondary" onClick={onDemo}>
-                <Zap size={14} />
-                <span>Try Live Demo</span>
-              </button>
-            </div>
-          </Reveal>
+            <ArgusFooter />
+          </section>
+        </>
+      ) : (
+        <>
+          {/* ============================================================
+              PHASE 1: HERO VIEWPORT STAGE
+              ============================================================ */}
+          <header className="arg-hero landing-phase phase-hero" id="top">
+            <div className="arg-hero-inner">
+              <div className="arg-hero-content">
+                <div className="arg-hero-badge">
+                  <span className="arg-pulse" />
+                  <span>AI-POWERED AUTOMATED EDA & DATA INTELLIGENCE PLATFORM</span>
+                </div>
 
-          {!user && (
-            <Reveal delay={120} className="arg-cta-auth-side">
-              <div className="arg-cta-auth-box">
-                <AuthModal
-                  embedded
-                  initialTab="signup"
-                  onSuccess={(u) => onEnter?.()}
-                  onDemo={onDemo}
-                />
+                <h1>
+                  Understand your data{' '}
+                  <span className="arg-hero-title-break"><br /></span>
+                  <span className="arg-type">{typed}</span>
+                  <i className="arg-caret" />
+                </h1>
+
+                <p className="arg-hero-sub">
+                  Drop in a CSV, Excel or Parquet file. Argus types every column, scores the data&rsquo;s health,
+                  draws ten-plus charts from real computed statistics, and explains each one in plain English &mdash;
+                  all inside a local Python sandbox your rows never leave.
+                </p>
+
+                <div className="arg-hero-actions">
+                  <button className="arg-btn-primary" onClick={onEnter}>
+                    <span>Upload your dataset &rarr;</span>
+                  </button>
+                  <button className="arg-btn-secondary" onClick={onDemo}>
+                    <Zap size={15} />
+                    <span>Try Live Demo</span>
+                  </button>
+                </div>
+
+                {/* Interactive Query Chips */}
+                <div className="arg-hero-prompts-tray">
+                  <span className="tray-label">EXPLORE INSTANTLY:</span>
+                  <div className="tray-chips">
+                    {SAMPLE_PROMPTS.map((prompt, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        className="arg-prompt-chip"
+                        onClick={onDemo}
+                        title="Explore with live demo dataset"
+                      >
+                        <span className="chip-icon">{prompt.icon}</span>
+                        <span className="chip-text">{prompt.full}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sleek Integrated 4-Stat Metric Dock */}
+                <div className="arg-hero-metrics-dock" ref={statsRef}>
+                  {statsList.map(([value, label]) => (
+                    <div key={label} className="hero-metric-cell">
+                      <span className="metric-val">{value}</span>
+                      <span className="metric-lbl">{label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Trust badges row */}
+                <div className="arg-hero-trust-bar">
+                  <span className="trust-item">🔒 100% In-Memory Python</span>
+                  <span className="trust-dot">•</span>
+                  <span className="trust-item">⚡ Zero Cloud Persistence</span>
+                  <span className="trust-dot">•</span>
+                  <span className="trust-item">🛡️ AST-Sandboxed</span>
+                </div>
               </div>
-            </Reveal>
-          )}
-        </div>
-      </div>
 
-      {/* ── Polished Product Footer Stage ─────────────────────────── */}
-      <ArgusFooter />
+              {/* Interactive What Argus Does Capability Showcase */}
+              <div className="arg-hero-visual">
+                <WhatArgusDoesShowcase onEnter={onEnter} onDemo={onDemo} />
+              </div>
+            </div>
+          </header>
 
-      {/* ── Floating Mobile Quick Action Bar (Samvaad style) ──────── */}
-      {isMobile && scrolled && (
-        <aside className="arg-floating-mobile-bar" aria-label="Mobile quick actions">
-          <button className="arg-float-demo-btn" onClick={onDemo}>
-            <Zap size={14} />
-            <span>⚡ Live Demo</span>
-          </button>
-          <button className="arg-float-cta-btn" onClick={onEnter}>
-            <span>Upload File</span>
-            <ArrowRight size={14} />
-          </button>
-        </aside>
+          {/* ============================================================
+              PHASE 2: PROJECT INTEL (SAMVAAD-STYLE INTERACTIVE EXPLAINER)
+              ============================================================ */}
+          <Section
+            id="overview"
+            alt
+            onNextPhase={goToPhase}
+            tag="PROJECT OVERVIEW"
+            tagColor="#F97316"
+            title="What Argus is, in its own words"
+            subtitle="Ask the five questions people actually ask — the purpose, the grounding, the privacy boundary, the agent layer and the stack — and read the answer as it is written."
+          >
+            <ProjectOverview onEnter={onEnter} onDemo={onDemo} onNextPhase={goToPhase} />
+          </Section>
+
+          {/* ============================================================
+              PHASE 3: CORE BENTO FEATURES
+              ============================================================ */}
+          <Section
+            id="features"
+            onNextPhase={goToPhase}
+            tag="FEATURES"
+            tagColor="#7F77DD"
+            title="Everything EDA, automated"
+            subtitle="Health scoring, missing-value maps, Tukey fences, correlations and ML prescriptions — each one computed, not estimated."
+          >
+            <BentoFeatures />
+          </Section>
+
+          {/* ============================================================
+              PHASE 4: END-TO-END PIPELINE (ANIMATED FLOW MAP)
+              ============================================================ */}
+          <Section
+            id="pipeline"
+            alt
+            onNextPhase={goToPhase}
+            className="phase-explainer"
+            tag="END-TO-END PIPELINE"
+            tagColor="#F97316"
+            title="What happens between your file and your answer"
+            subtitle="Six stages, each handing the next a verified payload. Tap any stage to watch that step run and see exactly what it takes in and gives back."
+          >
+            <ArgusFlowMap />
+          </Section>
+
+          {/* ============================================================
+              PHASE 5: AGENT ORCHESTRATION + AST GATE
+              ============================================================ */}
+          <Section
+            id="agents"
+            alt
+            onNextPhase={goToPhase}
+            className="phase-explainer"
+            tag="ORCHESTRATION & SANDBOX"
+            tagColor="#38BDF8"
+            title="How the agent decides — and what it is never allowed to do"
+            subtitle="A planner routes your question to a deterministic tool, a validator checks the result and retries rather than guessing, and any generated code passes an AST gate before it runs."
+          >
+            <ExplainerPair
+              mode="switch"
+              className="ax-pair-wide"
+              items={[
+                { id: 'graph', label: '🤖 Agent graph', render: () => <AgentStateGraph /> },
+                { id: 'gate', label: '🛡️ AST gate', render: () => <SandboxGate /> },
+              ]}
+            />
+          </Section>
+
+          {/* ============================================================
+              PHASE 6: CHART ENGINE + TIME SAVED
+              ============================================================ */}
+          <Section
+            id="charts"
+            onNextPhase={goToPhase}
+            className="phase-explainer"
+            tag="CHART ENGINE"
+            tagColor="#EF9F27"
+            title="The figures Argus draws, and the rule that picks each one"
+            subtitle="Every chart is drawn from values that were already computed — and the lane beside it shows the first-pass work that buys you."
+          >
+            <ExplainerPair
+              className="ax-pair-even"
+              items={[
+                { id: 'lab', label: '📊 Chart engine', render: () => <ChartLab /> },
+                { id: 'race', label: '⏱️ Time saved', render: () => <SpeedRace /> },
+              ]}
+            />
+          </Section>
+
+          {/* ============================================================
+              PHASE 7: WORKSPACE STUDIO GALLERY
+              ============================================================ */}
+          <Section
+            id="gallery"
+            alt
+            onNextPhase={goToPhase}
+            tag="WORKSPACE STUDIO"
+            tagColor="#38BDF8"
+            title="Live workspace in action"
+            subtitle="The environment you land in after your first upload: ask in plain English, watch the planner route it, read the answer with its receipt."
+          >
+            <WorkspaceShowcase onEnter={onEnter} onDemo={onDemo} />
+          </Section>
+
+          {/* ============================================================
+              PHASE 8: ARCHITECTURE & THE GROUNDING PROOF
+              ============================================================ */}
+          <Section
+            id="about"
+            onNextPhase={goToPhase}
+            className="phase-explainer"
+            tag="ARCHITECTURE"
+            tagColor="#1D9E75"
+            title="Why Argus exists"
+            subtitle="Deterministic computing underneath, plain-English narration on top — and a clear line between the two that the panel below traces number by number."
+          >
+            <div className="arg-about-unified">
+              <GroundingProof />
+            </div>
+          </Section>
+
+          {/* ============================================================
+              PHASE 9: QUESTIONS & ANSWERS (FAQ)
+              ============================================================ */}
+          <Section
+            id="faq"
+            alt
+            onNextPhase={goToPhase}
+            tag="FAQ"
+            tagColor="#E24B4A"
+            title="Questions, answered"
+            subtitle="Clear facts on data privacy, air-gapped Python execution, AST sandboxing, and our grounded multi-agent architecture."
+          >
+            <div className="arg-inner" style={{ maxWidth: 860 }}>
+              {FAQS.map(([question, answer], index) => {
+                const open = openFaq === index
+                return (
+                  <Reveal
+                    className={open ? 'arg-faq-item open' : 'arg-faq-item'}
+                    key={question}
+                    delay={index * 60}
+                  >
+                    <button
+                      className="arg-faq-q"
+                      aria-expanded={open}
+                      aria-controls={`arg-faq-a-${index}`}
+                      onClick={() => setOpenFaq(open ? -1 : index)}
+                    >
+                      <span>{question}</span>
+                      <div className="arg-faq-toggle-icon" aria-hidden="true">
+                        <ChevronDown size={18} className={open ? 'rotated' : ''} />
+                      </div>
+                    </button>
+                    <div className="arg-faq-a-wrap" id={`arg-faq-a-${index}`} aria-hidden={!open}>
+                      <div><p className="arg-faq-a">{answer}</p></div>
+                    </div>
+                  </Reveal>
+                )
+              })}
+            </div>
+          </Section>
+
+          {/* ============================================================
+              PHASE 10: FINAL LAUNCH STAGE + UNIFIED FOOTER
+              ============================================================ */}
+          <section className="arg-cta landing-phase phase-cta" id="auth-cta">
+            <div className="arg-cta-container">
+              <Reveal className="arg-cta-hero-card">
+                <div className="arg-cta-badge">
+                  <Sparkles size={13} />
+                  <span>START IN SECONDS · ZERO SETUP</span>
+                </div>
+                <h2>Point Argus at your next dataset</h2>
+                <p>
+                  Deterministic statistical profiling, Tukey IQR fences, correlation matrices, and grounded AI analyst narration.
+                  100% local Python sandbox — no data leaves your session.
+                </p>
+                <div className="arg-cta-actions">
+                  {user ? (
+                    <button className="arg-btn-primary cta-main-btn" onClick={onEnter}>
+                      <span>Open Workspace ({user.name?.split(' ')[0] || 'User'}) &rarr;</span>
+                    </button>
+                  ) : (
+                    <button className="arg-btn-primary cta-main-btn" onClick={() => onOpenAuth?.('signup')}>
+                      <span>Get Started Free &rarr;</span>
+                    </button>
+                  )}
+                  <button className="arg-btn-secondary cta-demo-btn" onClick={onDemo}>
+                    <Zap size={14} />
+                    <span>Try Live Demo</span>
+                  </button>
+                </div>
+                <div className="arg-cta-trust-pills">
+                  <span className="trust-pill">🔒 100% In-Memory Python</span>
+                  <span className="trust-pill-dot">•</span>
+                  <span className="trust-pill">📊 10+ Publication SVG Charts</span>
+                  <span className="trust-pill-dot">•</span>
+                  <span className="trust-pill">⚡ &lt;3s Runtime</span>
+                </div>
+              </Reveal>
+            </div>
+            <ArgusFooter />
+          </section>
+        </>
       )}
     </div>
   )

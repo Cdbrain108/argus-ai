@@ -145,12 +145,11 @@ function prefersReducedMotion() {
    IntersectionObserver rather than a scroll listener: a scroll handler fires on
    every frame of every scroll for the lifetime of the page, and `once` lets the
    observer disconnect itself the moment it has done its job. */
-export function useReveal({ threshold = 0.05, once = true, rootMargin = '0px 0px 80px 0px' } = {}) {
+export function useReveal({ threshold = 0.05, once = true, rootMargin = '40px 0px 40px 0px' } = {}) {
   const ref = useRef(null)
-  const [shown, setShown] = useState(() => prefersReducedMotion())
+  const [shown, setShown] = useState(false)
 
   useEffect(() => {
-    if (shown) return undefined
     const node = ref.current
     if (!node) return undefined
 
@@ -161,6 +160,8 @@ export function useReveal({ threshold = 0.05, once = true, rootMargin = '0px 0px
       return undefined
     }
 
+    const scrollContainer = node.closest('.landing-scroll') || null
+
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
@@ -170,11 +171,29 @@ export function useReveal({ threshold = 0.05, once = true, rootMargin = '0px 0px
           setShown(false)
         }
       })
-    }, { threshold, rootMargin })
+    }, {
+      root: scrollContainer,
+      threshold,
+      rootMargin,
+    })
 
     observer.observe(node)
+
+    // Immediate check in case container is already visible on mount
+    try {
+      const rootRect = scrollContainer
+        ? scrollContainer.getBoundingClientRect()
+        : { top: 0, bottom: window.innerHeight }
+      const nodeRect = node.getBoundingClientRect()
+      if (nodeRect.top < rootRect.bottom && nodeRect.bottom > rootRect.top) {
+        setShown(true)
+      }
+    } catch {
+      // ignore fallback
+    }
+
     return () => observer.disconnect()
-  }, [shown, threshold, once, rootMargin])
+  }, [threshold, once, rootMargin])
 
   return [ref, shown]
 }
@@ -234,16 +253,22 @@ export function useScrolled(px = 24) {
 
    One timeout per step keyed off `index`, not an interval: a throttled tab
    resumes on the step it was on instead of fast-forwarding through a backlog. */
-export function useCycle(length, { interval = 4200, active = true } = {}) {
+export function useCycle(length, { interval = 3800, active = true } = {}) {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
-  const still = prefersReducedMotion()
+
+  // Reset to first step whenever the component scrolls into view
+  useEffect(() => {
+    if (active) {
+      setIndex(0)
+    }
+  }, [active])
 
   useEffect(() => {
-    if (!active || paused || still || length < 2) return undefined
+    if (!active || paused || length < 2) return undefined
     const timer = setTimeout(() => setIndex((i) => (i + 1) % length), interval)
     return () => clearTimeout(timer)
-  }, [index, active, paused, still, length, interval])
+  }, [index, active, paused, length, interval])
 
   return { index, setIndex, setPaused }
 }
@@ -275,27 +300,30 @@ export function useMountFlag(delay = 40) {
    900 renders instead of 150. One timeout per word (not an interval) means the
    pace is honoured even when the tab is throttled, and the whole thing
    short-circuits to the finished text under prefers-reduced-motion. */
-export function useTypedText(source, { delay = 70, active = true } = {}) {
+export function useTypedText(source, { delay = 18, chunkSize = 3, active = true } = {}) {
   const text = typeof source === 'string' ? source : ''
   const words = useMemo(() => (text ? text.split(/(\s+)/) : []), [text])
-  // Whitespace is captured in the split so newlines survive; only the
-  // non-blank chunks advance the counter, so the pace stays one word per tick.
+  // Whitespace is captured in the split so newlines survive; non-blank chunks
+  // advance the counter in fast multi-word chunks.
   const total = words.length
   const instant = !active || !text || prefersReducedMotion()
   const [count, setCount] = useState(() => (instant ? total : 0))
 
-  // A new paragraph restarts the animation; the same paragraph re-rendering
-  // (a parent state change, a tab switch) must not.
   useEffect(() => { setCount(instant ? total : 0) }, [text, instant, total])
 
   useEffect(() => {
     if (instant || count >= total) return undefined
-    // Skip past the whitespace chunk in the same tick as the word before it,
-    // so a gap never costs an extra beat.
-    const step = words[count] && !words[count].trim() ? 2 : 1
-    const timer = setTimeout(() => setCount((n) => Math.min(total, n + step)), delay)
+    let nextCount = count
+    let wordsCounted = 0
+    while (nextCount < total && wordsCounted < chunkSize) {
+      if (words[nextCount] && words[nextCount].trim()) {
+        wordsCounted++
+      }
+      nextCount++
+    }
+    const timer = setTimeout(() => setCount(Math.min(total, Math.max(count + 1, nextCount))), delay)
     return () => clearTimeout(timer)
-  }, [count, total, delay, instant, words])
+  }, [count, total, delay, chunkSize, instant, words])
 
   return {
     text: count >= total ? text : words.slice(0, count).join(''),

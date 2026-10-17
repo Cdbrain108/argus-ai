@@ -86,7 +86,7 @@ function UploadStage() {
       </div>
       <ul className="arg-sniff">
         {SNIFFED.map(([column, raw, type, color], index) => (
-          <li key={column} style={{ '--d': `${260 + index * 230}ms` }}>
+          <li key={column} className={index >= 3 ? 'desktop-only-sniff' : ''} style={{ '--d': `${260 + index * 230}ms` }}>
             <code>{column}</code>
             <span className="arg-sniff-raw">{raw}</span>
             <i className="arg-sniff-arrow" aria-hidden="true">→</i>
@@ -155,6 +155,10 @@ function ProfileStage() {
           </li>
         ))}
       </ul>
+      <div className="arg-profile-verdict">
+        <span className="verdict-dot" />
+        <span><strong>Audit Verdict:</strong> Clean Schema · 19.9% Nulls in Age · 118 Tukey Outliers</span>
+      </div>
     </div>
   )
 }
@@ -304,6 +308,27 @@ export function PipelineShowcase() {
         <div className="arg-stage-visual" key={stage.id}>
           <Visual />
         </div>
+      </div>
+
+      {/* Mobile Stage Switcher Controls */}
+      <div className="pipeline-mobile-nav">
+        <button
+          type="button"
+          disabled={index === 0}
+          onClick={() => setIndex((p) => Math.max(0, p - 1))}
+          className="pipeline-nav-btn"
+        >
+          &larr; Prev Stage
+        </button>
+        <span className="pipeline-nav-indicator">Stage {index + 1} of {STAGES.length}</span>
+        <button
+          type="button"
+          disabled={index === STAGES.length - 1}
+          onClick={() => setIndex((p) => Math.min(STAGES.length - 1, p + 1))}
+          className="pipeline-nav-btn"
+        >
+          Next Stage &rarr;
+        </button>
       </div>
     </div>
   )

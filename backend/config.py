@@ -30,8 +30,13 @@ def _env_values(name: str) -> list[str]:
 
 
 def api_keys() -> dict[str, list[str]]:
-    default_path = ROOT / "api_keys.txt" if (ROOT / "api_keys.txt").is_file() else (ROOT / "api_keys.txt.txt")
-    file_path = Path(os.getenv("ARGUS_API_KEYS_FILE", str(default_path)))
+    env_file = os.getenv("ARGUS_API_KEYS_FILE", "").strip()
+    if env_file:
+        file_path = Path(env_file) if Path(env_file).is_absolute() else (ROOT / env_file)
+        if not file_path.is_file():
+            file_path = ROOT / "api_keys.txt"
+    else:
+        file_path = ROOT / "api_keys.txt"
     nvidia = _env_values("NVIDIA_API_KEYS")
     groq = _env_values("GROQ_API_KEYS") + _env_values("GROQ_API_KEY")
     vyce = _env_values("VYCEAI_API_KEYS") + _env_values("VYCE_API_KEY") + _env_values("VYCEAI_API_KEY")
@@ -112,6 +117,11 @@ def llm_candidates() -> list[LLMConfig]:
     random.shuffle(vyce_keys)
     random.shuffle(inc_keys)
     random.shuffle(nara_keys)
+
+    primary_groq = os.getenv("GROQ_PRIMARY_KEY", "")
+    if primary_groq and primary_groq in groq_keys:
+        groq_keys.remove(primary_groq)
+        groq_keys.insert(0, primary_groq)
 
     nvidia = [LLMConfig("nvidia", _nvidia_model(), os.getenv("NVIDIA_BASE_URL", NVIDIA_BASE_URL), k) for k in nvidia_keys]
     groq = [LLMConfig("groq", _groq_model(), GROQ_BASE_URL, k) for k in groq_keys]

@@ -83,7 +83,8 @@ export function uploadDataset(file) {
   return request('/api/datasets/upload', { method: 'POST', body: data })
 }
 
-export const loadDemoDataset = () => request('/api/datasets/demo', { method: 'POST' })
+export const loadDemoDataset = (name = 'titanic') =>
+  request(`/api/datasets/demo?name=${encodeURIComponent(name)}`, { method: 'POST' })
 export const getDataset = (id) => request(`/api/datasets/${id}`)
 export const getPreview = (id, n_rows = 100) => request(`/api/datasets/${id}/preview?n_rows=${n_rows}`)
 export const getHealth = (id) => request(`/api/datasets/${id}/health`)

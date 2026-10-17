@@ -96,13 +96,17 @@ def provider_status() -> dict:
 def _classify_error(exc: Exception) -> tuple[str, bool]:
     """Map a provider exception to (error_type, retryable)."""
     name = type(exc).__name__
+    msg = str(exc).lower()
+    status_code = getattr(exc, "status_code", None)
+    if status_code == 402 or "402" in msg or "payment" in msg or "credit" in msg or "quota" in msg or "balance" in msg:
+        return "llm_payment_required", False
     if "Timeout" in name:
         return "llm_timeout", True
-    if "AuthenticationError" in name or "PermissionDenied" in name:
+    if "AuthenticationError" in name or "PermissionDenied" in name or status_code in (401, 403) or "401" in msg or "403" in msg:
         return "llm_auth", False
-    if "NotFound" in name:
+    if "NotFound" in name or status_code == 404:
         return "llm_model_not_found", False
-    if "RateLimit" in name:
+    if "RateLimit" in name or status_code == 429 or "429" in msg:
         return "llm_rate_limited", True
     return "llm_error", True
 
@@ -153,9 +157,9 @@ def chat_completion(
         except Exception as exc:  # noqa: BLE001 — provider SDKs raise a wide range
             last_type, last_retryable = _classify_error(exc)
             last_detail = f"{config.provider}/{config.model}: {exc}"
-            if last_type in {"llm_auth", "llm_model_not_found"}:
-                # A bad key or model id will fail identically on every retry with
-                # this provider, so move on rather than burning the budget.
+            if last_type in {"llm_auth", "llm_model_not_found", "llm_payment_required"}:
+                # A bad key, exhausted quota (402), or model id will fail identically on every retry with
+                # this provider/key, so move to the next candidate immediately.
                 continue
 
     raise LLMUnavailable(last_detail, last_type, retryable=last_retryable)

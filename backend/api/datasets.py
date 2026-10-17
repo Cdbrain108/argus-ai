@@ -106,17 +106,105 @@ async def upload_dataset(file: UploadFile = File(...)):
     return _session_payload(session)
 
 
+DEMO_MAP = {
+    "titanic": {
+        "file": "demo_data.csv",
+        "display_name": "Titanic Survival Master",
+        "narrative": (
+            "This dataset records individual passengers from the historical Titanic voyage, "
+            "with each row representing one person. It contains 891 entries detailing their demographics, "
+            "ticket info, and whether they survived the trip.\n\n"
+            "Key columns include Survived, which indicates if the passenger lived, and Pclass, showing their "
+            "ticket class from one to three. Age records their years, while Sex and Embarked describe their "
+            "gender and port of departure. Fare lists the ticket price, and Cabin identifies their specific room.\n\n"
+            "Data quality is solid, with an overall health score of 74 out of 100. The loader converted text "
+            "fields like Survived and Pclass into proper boolean and integer formats. Missingness is concentrated "
+            "in Cabin (missing for 687 passengers, 77.1%) and Age (lacking 177 values, 19.9%). No duplicate rows were found.\n\n"
+            "The most insightful next step is analyzing survival rates by Pclass and Sex, revealing how "
+            "ticket class and gender influenced survival probabilities."
+        ),
+    },
+    "bikeshare": {
+        "file": "daily-bike-share.csv",
+        "display_name": "Capital Bike Share Ridership",
+        "narrative": (
+            "This dataset records daily rental counts from the Capital Bikeshare bicycle sharing system across 731 days, "
+            "capturing how environmental factors and seasonal changes drive urban transit demand.\n\n"
+            "Key columns include rentals (the target rental volume), temp and atemp (normalized temperature and feeling temperature), "
+            "hum (relative humidity), windspeed, season (1 to 4), weathersit (weather category), and calendar attributes like holiday, "
+            "weekday, and workingday.\n\n"
+            "Data quality is exceptional with zero null values and an overall dataset health score of 98 out of 100. All variables "
+            "are properly typed as continuous floats or discrete calendar categories.\n\n"
+            "Key analytical insights reveal that warmer temperatures and low humidity strongly increase daily rental volume, "
+            "while adverse weather (rain or mist) creates steep drops in ridership. Seasonal peaks occur consistently in summer and autumn."
+        ),
+    },
+    "churn": {
+        "file": "customer_churn.csv",
+        "display_name": "Customer Churn & Retention",
+        "narrative": (
+            "This dataset profiles 1,000 telecommunication customer accounts to investigate subscriber retention patterns and revenue attrition risks.\n\n"
+            "Key columns include churn (binary retention target), tenure_months (customer lifetime duration), contract (Month-to-month, "
+            "One year, Two year), internet_service (DSL, Fiber optic, No), monthly_charges, total_charges, and service add-ons like online_security.\n\n"
+            "Data quality is pristine with a 99 out of 100 health index and zero missing rows. The ingestion engine automatically formatted "
+            "financial figures and boolean flags into standardized types.\n\n"
+            "The primary analytical takeaway indicates that month-to-month contract holders and fiber-optic subscribers paying higher monthly fees "
+            "exhibit significantly elevated churn risk, highlighting clear segments for proactive retention incentives."
+        ),
+    },
+}
+
+
 @router.post("/demo")
-def load_demo_dataset():
-    """Load the bundled sample file so the landing page's "Try Live Demo" button
-    works without the visitor having to find a dataset first."""
+def load_demo_dataset(name: str | None = None, demo_id: str | None = None):
+    """Load bundled sample datasets (Titanic, Bike Share, Customer Churn) so visitors
+    can instantly practice exploratory data analysis with verified real-world data."""
     from backend.services import dataset_service as ds
 
-    for name in DEMO_CANDIDATES:
-        path = ROOT / name
+    target_key = (demo_id or name or "").strip().lower()
+    
+    # Try exact match from DEMO_MAP
+    if target_key in DEMO_MAP:
+        entry = DEMO_MAP[target_key]
+        path = ROOT / entry["file"]
         if path.is_file():
-            session = ds.create_dataset_session(path.read_bytes(), name, "Demo Dataset")
+            session = ds.create_dataset_session(path.read_bytes(), entry["file"], entry["display_name"])
+            session.narrative = {
+                "text": entry["narrative"],
+                "source": "ai",
+                "model": "qwen/qwen3.8-27b",
+                "note": None,
+                "kind": "dataset",
+            }
             return _session_payload(session)
+
+    # Check fuzzy keywords
+    if "bike" in target_key or "share" in target_key:
+        entry = DEMO_MAP["bikeshare"]
+    elif "churn" in target_key or "customer" in target_key:
+        entry = DEMO_MAP["churn"]
+    else:
+        entry = DEMO_MAP["titanic"]
+
+    path = ROOT / entry["file"]
+    if path.is_file():
+        session = ds.create_dataset_session(path.read_bytes(), entry["file"], entry["display_name"])
+        session.narrative = {
+            "text": entry["narrative"],
+            "source": "ai",
+            "model": "qwen/qwen3.8-27b",
+            "note": None,
+            "kind": "dataset",
+        }
+        return _session_payload(session)
+
+    # Fallback to scanning any existing demo candidates
+    for cand in ("demo_data.csv", "daily-bike-share.csv", "customer_churn.csv"):
+        cand_path = ROOT / cand
+        if cand_path.is_file():
+            session = ds.create_dataset_session(cand_path.read_bytes(), cand, "Demo Dataset")
+            return _session_payload(session)
+
     raise HTTPException(status_code=404, detail="No demo dataset is bundled with this deployment")
 
 

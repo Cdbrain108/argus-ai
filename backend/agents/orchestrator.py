@@ -21,6 +21,7 @@ _FRIENDLY_ERRORS = {
         "Deterministic analyses in Explore, Data Cleaning, and Feature Discovery still work."
     ),
     "llm_auth": "The configured AI provider rejected the API key. Check the key and try again.",
+    "llm_payment_required": "AI provider quota exhausted. Switched to deterministic offline analysis.",
     "llm_model_not_found": "The configured AI model name was not recognised by the provider.",
     "llm_rate_limited": "The AI provider is rate-limiting requests. Wait a moment and try again.",
     "llm_error": "The AI planner could not be reached. Try again, or run an analysis from Explore.",
