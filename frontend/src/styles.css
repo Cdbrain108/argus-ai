@@ -32,14 +32,19 @@ button { cursor: pointer; }
 /* Touch device overrides — larger hit targets, no hover transforms.
    Data attribute set by App.jsx on mount based on hardware detection. */
 :root[data-touch="true"] .nav-item,
-:root[data-touch="true"] .upload-button,
 :root[data-touch="true"] .new-chat,
-:root[data-touch="true"] .nav-toggle,
-:root[data-touch="true"] .topbar-actions button,
 :root[data-touch="true"] .suggestions button {
   min-height: 44px !important;
   padding-top: 11px !important;
   padding-bottom: 11px !important;
+}
+:root[data-touch="true"] .topbar .nav-toggle,
+:root[data-touch="true"] .topbar .upload-button,
+:root[data-touch="true"] .topbar-actions button {
+  min-height: 36px !important;
+  height: 36px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
 :root[data-touch="true"] .nav-item:hover,
 :root[data-touch="true"] .topbar-actions button:hover {
@@ -5769,8 +5774,14 @@ select {
   align-items: center;
   gap: 6px;
   overflow-x: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
   padding: 2px 0;
+}
+
+.col-mention-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .composer-col-pill {

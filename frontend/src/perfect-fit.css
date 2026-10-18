@@ -1951,43 +1951,97 @@
 /* --------------------------------------------------------------------------
    13. WORKSPACE SESSION LAYOUT ALIGNMENT
    -------------------------------------------------------------------------- */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .topbar {
-    min-width: 0 !important;
-    overflow: hidden !important;
+    height: 54px !important;
+    min-height: 54px !important;
+    max-height: 54px !important;
+    padding: 0 12px !important;
     gap: 8px !important;
-    padding: 0 10px !important;
+    overflow: visible !important; /* CRITICAL: Never clip icons or text! */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 50 !important;
   }
   .topbar-left {
     min-width: 0 !important;
     gap: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+  .nav-toggle {
+    width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    flex-shrink: 0 !important;
+  }
+  .nav-toggle-text {
+    display: none !important;
+  }
+  .mobile-brand {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    color: #f97316 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
   }
   .topbar-actions {
     min-width: 0 !important;
     gap: 6px !important;
     margin-left: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
   }
-  .topbar-fullscreen-btn span,
-  .nav-toggle-text,
-  .topbar-rate-btn span,
+  .topbar-fullscreen-btn,
+  .topbar-rate-btn {
+    display: none !important; /* Hide non-essential buttons on mobile topbar */
+  }
   .topbar-login-btn span,
   .user-name-label,
   .user-chevron {
     display: none !important;
   }
-  .topbar-fullscreen-btn,
-  .topbar-rate-btn,
-  .topbar-login-btn,
-  .nav-toggle,
   .upload-button {
-    padding: 8px 9px !important;
-    min-height: 38px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+  }
+  .upload-button span {
+    display: none !important;
+  }
+  .topbar-user-btn,
+  .topbar-login-btn {
+    width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
   }
   .topbar-status {
     display: none !important;
-  }
-  .mobile-brand {
-    font-size: 14px !important;
   }
 }
 
@@ -4489,49 +4543,98 @@
 }
 
 /* 5. Mobile Inner Workspace Adaptive Layout */
-@media (max-width: 860px) {
+@media (max-width: 900px) {
   .empty-state {
     display: none !important;
   }
 
-  .workspace {
-    padding: 10px 10px calc(72px + env(safe-area-inset-bottom, 0px)) !important;
-    overflow-y: auto !important;
+  .content {
+    padding: 8px 10px calc(66px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  .analyst-workspace {
-    padding: 6px 8px calc(70px + env(safe-area-inset-bottom, 0px)) !important;
-    height: 100% !important;
+  .workspace-page-analyst {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
   }
 
-  .page-heading {
-    margin-bottom: 8px !important;
+  .analyst-workspace {
+    padding: 0 !important;
+    height: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
   }
 
-  .page-heading h1 {
-    font-size: 20px !important;
+  .analyst-workspace .page-heading {
+    margin-bottom: 2px !important;
+    padding-bottom: 0 !important;
   }
 
-  .page-heading p {
-    font-size: 12px !important;
+  .analyst-workspace .page-heading h1 {
+    font-size: 17px !important;
+    margin: 2px 0 0 !important;
+    line-height: 1.2 !important;
+  }
+
+  .analyst-workspace .page-heading p {
+    display: none !important; /* Hide 2-line subtitle on mobile to give room to chat/data */
   }
 
   .analyst-command-strip {
-    flex-wrap: wrap !important;
+    padding: 6px 10px !important;
+    margin-bottom: 4px !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+  }
+
+  .command-strip-main {
+    display: flex !important;
+    align-items: center !important;
     gap: 8px !important;
-    padding: 8px 12px !important;
-    margin-bottom: 8px !important;
+    min-width: 0 !important;
+  }
+
+  .command-strip-main strong {
+    font-size: 12.5px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .command-strip-main span {
+    display: none !important;
   }
 
   .command-strip-tools {
-    width: 100% !important;
-    justify-content: space-between !important;
+    width: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .fullscreen-mode-toggle-btn {
+    display: none !important; /* Redundant on mobile */
+  }
+
+  .verbose-mode-toggle-btn {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    border-radius: 6px !important;
   }
 
   .command-strip-hint {
     display: none !important;
+  }
+
+  .mp-analyst-switch {
+    margin-bottom: 6px !important;
   }
 
   .chat-layout {
@@ -4543,50 +4646,156 @@
     gap: 0 !important;
   }
 
+  /* Chat Tab on Mobile */
   .chat-panel {
     display: flex !important;
     flex-direction: column !important;
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
     width: 100% !important;
-    border-radius: 16px !important;
+    height: clamp(380px, calc(100dvh - 210px), 640px) !important;
+    border-radius: 14px !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    background: rgba(13, 18, 30, 0.85) !important;
+    background: rgba(13, 18, 30, 0.95) !important;
     overflow: hidden !important;
   }
 
   .chat-messages {
     flex: 1 1 auto !important;
-    min-height: 0 !important;
+    min-height: 160px !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
-    padding: 12px !important;
+    padding: 12px 10px !important;
+  }
+
+  .composer-col-mention-bar {
+    padding: 4px 10px !important;
+    background: rgba(8, 12, 22, 0.95) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .col-mention-scroll {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .col-mention-scroll::-webkit-scrollbar {
+    display: none !important;
   }
 
   .composer {
-    padding: 10px 12px !important;
-    background: rgba(10, 15, 28, 0.98) !important;
+    padding: 8px 10px !important;
+    background: rgba(8, 12, 22, 0.98) !important;
     border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 0 0 16px 16px !important;
-    position: relative !important;
+    border-radius: 0 0 14px 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
   }
 
-  .context-panel {
+  .composer textarea {
+    font-size: 13.5px !important;
+    padding: 8px 10px !important;
+    min-height: 38px !important;
+    max-height: 80px !important;
+    resize: none !important;
+  }
+
+  .send-button {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    border-radius: 8px !important;
+  }
+
+  /* Data Fields / Schema Tab on Mobile */
+  .context-panel.analyst-dataset-inspector {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: clamp(400px, calc(100dvh - 210px), 660px) !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    background: rgba(13, 18, 30, 0.95) !important;
+    overflow: hidden !important;
+  }
+
+  .context-tab-bar {
+    display: none !important; /* Hide duplicate tabs on mobile */
+  }
+
+  .analyst-schema-hub {
     display: flex !important;
     flex-direction: column !important;
     flex: 1 1 auto !important;
     min-height: 0 !important;
-    width: 100% !important;
-    border-radius: 16px !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    background: rgba(13, 18, 30, 0.85) !important;
     overflow: hidden !important;
+    background: transparent !important;
+  }
+
+  .schema-search-header {
+    padding: 8px 10px !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .schema-search-input {
+    padding: 6px 10px 6px 28px !important;
+    font-size: 12px !important;
+    border-radius: 6px !important;
+  }
+
+  .schema-filter-chips {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 4px !important;
+    padding: 2px 0 !important;
+  }
+
+  .schema-filter-chips::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .filter-chip {
+    padding: 3px 8px !important;
+    font-size: 9px !important;
+    border-radius: 5px !important;
+    flex-shrink: 0 !important;
   }
 
   .schema-columns-feed {
-    max-height: calc(100vh - 310px) !important;
+    flex: 1 1 auto !important;
+    min-height: 180px !important;
+    max-height: none !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
+    padding: 8px 10px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .schema-col-card {
+    padding: 10px 12px !important;
+    border-radius: 8px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .analyst-panel-footer {
+    padding: 8px 10px !important;
+    background: rgba(8, 12, 22, 0.98) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    flex-shrink: 0 !important;
+  }
+
+  .analyst-report-btn {
+    width: 100% !important;
+    padding: 9px 12px !important;
+    font-size: 12px !important;
+    border-radius: 8px !important;
+    justify-content: center !important;
   }
 
   /* Bottom Navigation Mobile Bar */
