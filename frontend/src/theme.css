@@ -1710,10 +1710,16 @@ button { font-family: inherit; cursor: pointer; }
     padding: 6px 4px !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 6px !important;
-    overflow-y: auto !important;
-    scrollbar-width: thin !important;
+    overflow: hidden !important;
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
     max-height: none !important;
+  }
+  .arg-overview-body::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
   .overview-msg {
     display: flex !important;
