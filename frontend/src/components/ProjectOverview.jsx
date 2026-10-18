@@ -133,6 +133,7 @@ export default function ProjectOverview({ onEnter, onDemo }) {
 
   const containerRef = useRef(null)
   const bodyRef = useRef(null)
+  const textScrollRef = useRef(null)
   const animationTimerRef = useRef(null)
   const introRunRef = useRef(false)
 
@@ -194,6 +195,9 @@ export default function ProjectOverview({ onEnter, onDemo }) {
     if (bodyRef.current) {
       bodyRef.current.scrollTop = 0
     }
+    if (textScrollRef.current) {
+      textScrollRef.current.scrollTop = 0
+    }
 
     // Reduced motion support: instant render
     if (
@@ -224,13 +228,16 @@ export default function ProjectOverview({ onEnter, onDemo }) {
           animationTimerRef.current = null
         } else {
           setTypedText(text.slice(0, charIdx))
-          // Only scroll if content genuinely overflows past the view boundary
-          if (bodyRef.current) {
-            const el = bodyRef.current
+          // Only scroll inner typed text container if content overflows
+          if (textScrollRef.current) {
+            const el = textScrollRef.current
             const maxScroll = el.scrollHeight - el.clientHeight
-            if (maxScroll > 15 && el.scrollTop < maxScroll) {
+            if (maxScroll > 10 && el.scrollTop < maxScroll) {
               el.scrollTop = maxScroll
             }
+          }
+          if (bodyRef.current && bodyRef.current.scrollTop !== 0) {
+            bodyRef.current.scrollTop = 0
           }
         }
       }, interval)
@@ -340,15 +347,6 @@ export default function ProjectOverview({ onEnter, onDemo }) {
               <Bot size={16} color="#ffffff" />
             </div>
             <div className="msg-bubble ai-bubble" onClick={isTyping ? skipTyping : undefined}>
-              {/* Mobile quick-take bullets */}
-              {activeTopic.mobilePoints && (
-                <ul className="overview-quicktake">
-                  {activeTopic.mobilePoints.map((point) => (
-                    <li key={point}>{point}</li>
-                  ))}
-                </ul>
-              )}
-
               <div className="msg-meta">
                 <span style={{ color: activeTopic.accent }}>Argus Grounded Engine</span>
                 <small>Local Python 3.11 Kernel</small>
@@ -375,7 +373,7 @@ export default function ProjectOverview({ onEnter, onDemo }) {
               </div>
 
               {/* Streaming Typed Content */}
-              <div className="overview-typed-content">
+              <div className="overview-typed-content" ref={textScrollRef}>
                 {typedText.split('\n\n').map((paragraph, pIdx) => {
                   const lines = paragraph.split('\n')
                   return (

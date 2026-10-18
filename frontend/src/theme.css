@@ -1794,17 +1794,24 @@ button { font-family: inherit; cursor: pointer; }
     color: #cbd5e1 !important;
     cursor: pointer !important;
   }
-  .overview-typed-content {
-    font-size: 10px !important;
-    line-height: 1.4 !important;
-    color: #e2e8f0 !important;
+  .overview-msg.user-msg .question-text,
+  .overview-typed-content,
+  .overview-typed-content p,
+  .overview-text,
+  .overview-bullet {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif !important;
+    font-size: 11.5px !important;
+    line-height: 1.48 !important;
+    letter-spacing: -0.01em !important;
   }
   .overview-para-group {
     margin-bottom: 3px !important;
   }
+  .overview-text {
+    color: #e2e8f0 !important;
+    margin: 0 0 2px 0 !important;
+  }
   .overview-bullet {
-    font-size: 9.5px !important;
-    line-height: 1.35 !important;
     margin: 1px 0 !important;
     color: #cbd5e1 !important;
   }
