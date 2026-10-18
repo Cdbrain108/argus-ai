@@ -97,7 +97,12 @@ export function useContainerNarrow(ref, breakpoint = 480) {
 
 /* Watches a CSS media query and re-renders on match changes. */
 export function useMediaQuery(query, initialValue = false) {
-  const [matches, setMatches] = useState(initialValue)
+  const [matches, setMatches] = useState(() => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia(query).matches
+    }
+    return initialValue
+  })
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) {

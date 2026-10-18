@@ -772,9 +772,21 @@ function Workspace(props) {
   //   - Top taskbar is HIDDEN.
   // When sidebarOpen is false:
   //   - Sidebar is closed/hidden.
-  const isMobileScreen = useMediaQuery('(max-width: 900px)')
-  // On desktop, the sidebar is open by default so the user sees all workspace sections clearly.
-  const [sidebarOpen, setSidebarOpen] = useState(!isMobileScreen)
+  const isMobileScreen = useMediaQuery('(max-width: 900px)', typeof window !== 'undefined' ? window.innerWidth <= 900 : false)
+  // On desktop, the sidebar is open by default. On mobile, it stays closed by default.
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth > 900
+    }
+    return false
+  })
+
+  // Ensure sidebar is closed when viewport becomes mobile
+  useEffect(() => {
+    if (isMobileScreen) {
+      setSidebarOpen(false)
+    }
+  }, [isMobileScreen])
 
   // Track if first-time auto-fullscreen has already run for AI Analyst
   const [analystFirstAutoApplied, setAnalystFirstAutoApplied] = useState(() => {
@@ -1256,7 +1268,7 @@ function Workspace(props) {
             title={label}
           >
             <Icon size={18} />
-            <span>{id === 'features' ? 'Features' : id === 'cleaning' ? 'Clean' : label}</span>
+            <span>{id === 'analyst' ? 'Analyst' : id === 'features' ? 'Features' : id === 'cleaning' ? 'Clean' : label}</span>
           </button>
         ))}
         <button

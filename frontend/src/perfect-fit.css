@@ -1741,9 +1741,16 @@
   }
 
   /* Mobile Topbar & Header */
+  .arg-nav-desktop-center,
+  .arg-nav-actions-desktop {
+    display: none !important;
+  }
   .arg-nav {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
     height: 50px !important;
-    padding: 0 12px !important;
+    padding: 0 14px !important;
     top: 8px !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
@@ -1864,6 +1871,68 @@
   .ax-proof-grid {
     grid-template-columns: 1fr !important;
     gap: 10px !important;
+  }
+
+  /* Project Overview on Mobile */
+  .arg-overview-topbar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 8px 12px !important;
+  }
+  .arg-overview-topbar .traffic-lights {
+    display: none !important;
+  }
+  .arg-overview-topbar .overview-header-title {
+    font-size: 11.5px !important;
+  }
+  .overview-header-tag {
+    font-size: 9.5px !important;
+    padding: 2px 6px !important;
+  }
+  .arg-overview-body {
+    padding: 10px 12px !important;
+    gap: 8px !important;
+  }
+  .overview-msg.user-msg .msg-bubble {
+    max-width: 90% !important;
+    padding: 6px 12px !important;
+  }
+  .overview-msg.ai-msg .msg-bubble {
+    padding: 10px 12px !important;
+  }
+  .overview-typed-content {
+    min-height: 100px !important;
+    max-height: clamp(120px, 24vh, 180px) !important;
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+  }
+  .selector-tray-head {
+    display: none !important;
+  }
+  .arg-overview-selector-tray {
+    padding: 6px 10px !important;
+  }
+  .arg-overview-tab {
+    padding: 5px 11px !important;
+    font-size: 11px !important;
+  }
+  .arg-overview-footer {
+    flex-direction: column !important;
+    gap: 6px !important;
+    padding: 8px 12px !important;
+  }
+  .overview-footer-left {
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+  .overview-action-demo {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 6px 10px !important;
+    font-size: 11px !important;
   }
 
   /* CTA on Mobile */
@@ -4528,7 +4597,8 @@
     right: 0 !important;
     z-index: 1000 !important;
     height: 56px !important;
-    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    padding: 0 4px !important;
+    padding-bottom: max(4px, env(safe-area-inset-bottom, 0px)) !important;
     background: rgba(9, 13, 24, 0.94) !important;
     backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
@@ -4548,12 +4618,20 @@
     background: transparent !important;
     border: none !important;
     color: #94a3b8 !important;
-    font-size: 10px !important;
+    font-size: 9.5px !important;
     font-weight: 700 !important;
-    padding: 6px 8px !important;
-    min-width: 44px !important;
+    padding: 4px 2px !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
     cursor: pointer !important;
     transition: all 0.15s ease !important;
+  }
+
+  .mobile-bottom-nav-item span {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 46px !important;
   }
 
   .mobile-bottom-nav-item.active {
@@ -4563,6 +4641,29 @@
 
   .mobile-bottom-nav-item.action-new-chat {
     color: #38bdf8 !important;
+  }
+
+  /* Upload Modal on Mobile */
+  .arg-upload-modal-card {
+    padding: 18px 14px !important;
+    max-height: calc(100dvh - 24px) !important;
+    border-radius: 16px !important;
+    margin: 8px !important;
+    width: calc(100% - 16px) !important;
+  }
+  .arg-demo-quick-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 12px 10px !important;
+  }
+  .arg-demo-card-left {
+    width: 100% !important;
+  }
+  .arg-demo-perfect-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 9px 12px !important;
   }
 }
 
