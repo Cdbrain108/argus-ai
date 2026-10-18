@@ -129,10 +129,12 @@ export default function ProjectOverview({ onEnter, onDemo }) {
   const [isTyping, setIsTyping] = useState(false)
   const [isThinking, setIsThinking] = useState(false)
   const [inView, setInView] = useState(false)
+  const [hasLandedIntro, setHasLandedIntro] = useState(false)
 
   const containerRef = useRef(null)
   const bodyRef = useRef(null)
   const animationTimerRef = useRef(null)
+  const introRunRef = useRef(false)
 
   // Telemetry receipts customized for each topic
   const TELEMETRY_RECEIPTS = [
@@ -152,6 +154,10 @@ export default function ProjectOverview({ onEnter, onDemo }) {
       ([entry]) => {
         if (entry.isIntersecting) {
           setInView(true)
+          if (!introRunRef.current) {
+            introRunRef.current = true
+            setHasLandedIntro(true)
+          }
         }
       },
       { root: scrollRoot || null, threshold: 0.15 }
@@ -288,7 +294,13 @@ export default function ProjectOverview({ onEnter, onDemo }) {
 
   return (
     <div className="arg-project-overview" ref={containerRef}>
-      <div className="arg-overview-window" style={{ '--accent-theme': activeTopic.accent }}>
+      <div
+        className={`arg-overview-window ${hasLandedIntro ? 'overview-intro-active' : ''}`}
+        style={{ '--accent-theme': activeTopic.accent }}
+      >
+        {/* Intro Scanline Glow on first land */}
+        {hasLandedIntro && <div className="overview-boot-scanline" aria-hidden="true" />}
+
         {/* Top Header Bar */}
         <div className="arg-overview-topbar">
           <div className="overview-window-dots" aria-hidden="true">

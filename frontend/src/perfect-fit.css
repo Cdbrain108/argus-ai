@@ -731,6 +731,99 @@
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
+   FIRST-TIME LANDED INTRO ANIMATION & HOLOGRAPHIC SCANLINE (SAMVAAD REFERENCE)
+   ═════════════════════════════════════════════════════════════════════════════ */
+.arg-overview-window.overview-intro-active {
+  animation: overviewTerminalIntro 0.7s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+@keyframes overviewTerminalIntro {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.96);
+    filter: blur(4px);
+    box-shadow: 0 0 0 rgba(249, 115, 22, 0);
+  }
+  35% {
+    box-shadow: 0 0 35px rgba(249, 115, 22, 0.35), inset 0 0 16px rgba(249, 115, 22, 0.15);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
+  }
+}
+
+.overview-boot-scanline {
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #f97316, #38bdf8, transparent);
+  box-shadow: 0 0 14px #f97316, 0 0 8px #38bdf8;
+  animation: overviewScanline 1.2s cubic-bezier(0.4, 0, 0.2, 1) 0.1s forwards;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes overviewScanline {
+  0% {
+    left: -40%;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    left: 110%;
+    opacity: 0;
+  }
+}
+
+.overview-intro-active .overview-msg.user-msg {
+  animation: overviewMsgIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both !important;
+}
+
+.overview-intro-active .overview-msg.ai-msg {
+  animation: overviewMsgIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both !important;
+}
+
+.overview-intro-active .arg-overview-selector-tray {
+  animation: overviewTrayIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both !important;
+}
+
+.overview-intro-active .arg-overview-footer {
+  animation: overviewTrayIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both !important;
+}
+
+@keyframes overviewMsgIn {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes overviewTrayIn {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
    MOBILE PROJECT OVERVIEW (SAMVAAD 100% DYNAMIC FULLSCREEN SNAP ARCHITECTURE)
    ═════════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 820px) {
@@ -739,11 +832,11 @@
     height: 100dvh !important;
     min-height: 100dvh !important;
     max-height: 100dvh !important;
-    padding: calc(52px + env(safe-area-inset-top, 0px)) 8px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: calc(48px + env(safe-area-inset-top, 0px)) 8px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-start !important;
-    gap: 4px !important;
+    gap: 0 !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
     position: relative !important;
@@ -766,31 +859,8 @@
     overflow: hidden !important;
   }
 
+  /* User explicitly requested: Hide "What Argus is / Project Overview" header on mobile */
   .arg-section#overview .arg-section-head {
-    margin: 0 0 2px 0 !important;
-    padding: 0 !important;
-    text-align: center !important;
-    flex-shrink: 0 !important;
-    width: 100% !important;
-  }
-
-  .arg-section#overview .arg-section-tag {
-    font-size: 8px !important;
-    padding: 1px 6px !important;
-    margin-bottom: 1px !important;
-    display: inline-block !important;
-  }
-
-  .arg-section#overview .arg-section-head h2 {
-    font-size: clamp(13px, 3.8vw, 16px) !important;
-    line-height: 1.15 !important;
-    margin: 0 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-
-  .arg-section#overview .arg-section-head p {
     display: none !important;
   }
 
@@ -815,14 +885,15 @@
     justify-content: space-between !important;
     background: rgba(13, 19, 36, 0.95) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 14px !important;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65) !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
+    position: relative !important;
   }
 
   .arg-overview-topbar {
-    padding: 5px 10px !important;
+    padding: 6px 12px !important;
     background: rgba(8, 14, 26, 0.96) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
     display: flex !important;
