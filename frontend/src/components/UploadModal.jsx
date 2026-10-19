@@ -70,6 +70,7 @@ export default function UploadModal({
   onOpenAuth,
   busy = false,
 }) {
+  const [activeTab, setActiveTab] = useState('practice')
   const [isDragging, setIsDragging] = useState(false)
   const [loadingDemoId, setLoadingDemoId] = useState(null)
   const fileInputRef = useRef(null)
@@ -142,91 +143,39 @@ export default function UploadModal({
                 <span className="arg-pulse-dot" /> 100% In-Memory Python
               </span>
             </div>
-            <h3 className="arg-upload-modal-title">Upload or Choose Practice Dataset</h3>
+            <h3 className="arg-upload-modal-title">Choose or Ingest Dataset</h3>
             <p className="arg-upload-modal-subtitle">
-              Drop in your raw data or test ARGUS instantly using one of our verified benchmark datasets.
+              Select one of our 3 verified practice datasets or upload your own file.
             </p>
           </div>
         </div>
 
-        {/* If user is not logged in: Require login first */}
-        {!user ? (
-          <div className="arg-upload-auth-gate">
-            <div className="arg-upload-auth-gate-icon">
-              <Lock size={28} color="#f97316" />
-            </div>
-            <h4>Authentication Required</h4>
-            <p>
-              Please log in or create a free account to ingest datasets and access the full analytical workspace.
-            </p>
-            <div className="arg-upload-auth-actions">
-              <button
-                type="button"
-                className="arg-btn-primary"
-                onClick={() => {
-                  onClose?.()
-                  onOpenAuth?.('login')
-                }}
-              >
-                <span>Log in to Argus &rarr;</span>
-              </button>
-              <button
-                type="button"
-                className="arg-btn-secondary"
-                onClick={() => {
-                  onClose?.()
-                  onOpenAuth?.('signup')
-                }}
-              >
-                <span>Create Free Account</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="arg-upload-body">
-            {/* Native Drag and Drop Dropzone */}
-            <div
-              className={`arg-dropzone-box ${isDragging ? 'dragging' : ''} ${busy ? 'busy' : ''}`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={triggerBrowse}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={ACCEPTED_STRING}
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-                disabled={busy}
-              />
-              <div className="arg-dropzone-icon-circle">
-                <UploadCloud size={30} className="arg-dropzone-cloud-icon" />
-              </div>
-              <h4 className="arg-dropzone-prompt">
-                Drag &amp; drop your dataset file here
-              </h4>
-              <p className="arg-dropzone-sub">
-                or click anywhere inside to <strong>browse local files</strong>
-              </p>
+        {/* Segmented Ingestion Tabs */}
+        <div className="arg-upload-tabs-nav" role="tablist">
+          <button
+            type="button"
+            className={`arg-upload-tab-nav-btn ${activeTab === 'practice' ? 'active' : ''}`}
+            onClick={() => setActiveTab('practice')}
+            role="tab"
+            aria-selected={activeTab === 'practice'}
+          >
+            <Zap size={14} />
+            <span>Practice Benchmark Datasets ({DEMO_DATASETS.length})</span>
+          </button>
+          <button
+            type="button"
+            className={`arg-upload-tab-nav-btn ${activeTab === 'upload' ? 'active' : ''}`}
+            onClick={() => setActiveTab('upload')}
+            role="tab"
+            aria-selected={activeTab === 'upload'}
+          >
+            <UploadCloud size={14} />
+            <span>Upload Custom File</span>
+          </button>
+        </div>
 
-              {/* Supported Formats Pills */}
-              <div className="arg-dropzone-formats">
-                <span className="format-pill">CSV</span>
-                <span className="format-pill">Excel (.xlsx)</span>
-                <span className="format-pill">Parquet</span>
-                <span className="format-pill">JSON / JSONL</span>
-                <span className="format-pill">TSV / TXT</span>
-              </div>
-              <span className="arg-dropzone-size-hint">Max file size: 50 MB &middot; UTF-8, ASCII &amp; Latin-1 autodetected</span>
-            </div>
-
-            {/* Quick Demo Dataset Divider */}
-            <div className="arg-upload-divider">
-              <span>OR CHOOSE A PRACTICE DATASET TO TEST</span>
-            </div>
-
-            {/* 3 Curated Practice Benchmark Cards */}
+        <div className="arg-upload-body">
+          {activeTab === 'practice' && (
             <div className="arg-demo-cards-stack">
               {DEMO_DATASETS.map((item) => {
                 const IconComponent = item.icon
@@ -282,16 +231,85 @@ export default function UploadModal({
                 )
               })}
             </div>
+          )}
 
-            {/* Privacy & Assurance Footer */}
-            <div className="arg-upload-footer-assurance">
-              <ShieldCheck size={16} color="#1d9e75" />
-              <span>
-                Processed securely in-memory with deterministic Python math. Your data never leaves your local system.
-              </span>
-            </div>
+          {activeTab === 'upload' && (
+            !user ? (
+              <div className="arg-upload-auth-gate">
+                <div className="arg-upload-auth-gate-icon">
+                  <Lock size={28} color="#f97316" />
+                </div>
+                <h4>Authentication Required for Custom Uploads</h4>
+                <p>
+                  Please sign in or create a free account to ingest private custom files. Or explore our practice datasets immediately as guest!
+                </p>
+                <div className="arg-upload-auth-actions">
+                  <button
+                    type="button"
+                    className="arg-btn-primary"
+                    onClick={() => {
+                      onClose?.()
+                      onOpenAuth?.('login')
+                    }}
+                  >
+                    <span>Log in to Argus &rarr;</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="arg-btn-secondary"
+                    onClick={() => setActiveTab('practice')}
+                  >
+                    <span>⚡ Explore Practice Datasets</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                className={`arg-dropzone-box ${isDragging ? 'dragging' : ''} ${busy ? 'busy' : ''}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={triggerBrowse}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ACCEPTED_STRING}
+                  onChange={handleFileChange}
+                  style={{ display: 'none' }}
+                  disabled={busy}
+                />
+                <div className="arg-dropzone-icon-circle">
+                  <UploadCloud size={30} className="arg-dropzone-cloud-icon" />
+                </div>
+                <h4 className="arg-dropzone-prompt">
+                  Drag &amp; drop your dataset file here
+                </h4>
+                <p className="arg-dropzone-sub">
+                  or click anywhere inside to <strong>browse local files</strong>
+                </p>
+
+                {/* Supported Formats Pills */}
+                <div className="arg-dropzone-formats">
+                  <span className="format-pill">CSV</span>
+                  <span className="format-pill">Excel (.xlsx)</span>
+                  <span className="format-pill">Parquet</span>
+                  <span className="format-pill">JSON / JSONL</span>
+                  <span className="format-pill">TSV / TXT</span>
+                </div>
+                <span className="arg-dropzone-size-hint">Max file size: 50 MB &middot; UTF-8, ASCII &amp; Latin-1 autodetected</span>
+              </div>
+            )
+          )}
+
+          {/* Privacy & Assurance Footer */}
+          <div className="arg-upload-footer-assurance">
+            <ShieldCheck size={16} color="#1d9e75" />
+            <span>
+              Processed securely in-memory with deterministic Python math. Your data never leaves your local system.
+            </span>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

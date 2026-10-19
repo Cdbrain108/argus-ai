@@ -12,6 +12,7 @@ frontend/node_modules/
 frontend/dist/
 dist/
 build/
+.firebase/
 
 # ── Credentials & Secrets ───────────────────────────────────────────────────
 .env
@@ -30,6 +31,8 @@ users.json
 scratch/
 import_trace.txt
 *.log
+*.tar.gz
+*.zip
 cdrain.txt
 PROVIDER_LATENCY_REPORT.md
 provider_latency_test.py

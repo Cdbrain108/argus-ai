@@ -49,6 +49,9 @@ export function WhatArgusDoesShowcase({ onEnter, onDemo }) {
     const observer = new IntersectionObserver(
       ([entry]) => {
         setInView(entry.isIntersecting)
+        if (entry.isIntersecting) {
+          setActiveTab(0)
+        }
       },
       { root: scrollRoot || null, threshold: 0.08 }
     )
@@ -247,7 +250,7 @@ export function WhatArgusDoesShowcase({ onEnter, onDemo }) {
   )
 }
 
-// Mobile What We Do Cards Component
+// Mobile What We Do Cards Component — Streamlined 3-Pillar Live Capability Spotlight
 export function MobileWhatWeDoCards({ onEnter, onDemo }) {
   const [activeTab, setActiveTab] = useState(0)
 
@@ -255,39 +258,48 @@ export function MobileWhatWeDoCards({ onEnter, onDemo }) {
     {
       id: 'ingestion',
       label: '📁 Smart Types',
-      badge: 'SMART INGESTION',
+      badge: '0-CONFIG INGESTION',
       color: '#38BDF8',
-      title: '0-Config Schema Ingestion',
-      desc: 'Auto-detects CSV, Excel, Parquet & JSON. Sniffs dates, currency, percentages and booleans with zero manual setup.',
-      stat: '0.38s Ingestion Time'
+      title: 'Auto-Inferred Python Dtypes',
+      desc: 'Sniffs delimiters and encodings. Coerces raw strings into true NumPy and pandas datatypes in milliseconds.',
+      stat: '<0.4s Ingestion',
+      pills: [
+        { raw: '"$1,234.56"', arrow: '→', type: 'currency', color: '#10B981' },
+        { raw: '"12/03/2024"', arrow: '→', type: 'datetime', color: '#38BDF8' },
+        { raw: '"18.4%"', arrow: '→', type: 'percent', color: '#F97316' },
+      ],
+      guarantee: '✦ Native NumPy vector coercion · Zero manual mapping',
     },
     {
       id: 'profiling',
-      label: '📊 Profiling',
+      label: '📊 Statistical EDA',
       badge: 'DEEP PROFILING',
-      color: '#1D9E75',
+      color: '#10B981',
       title: 'Tukey Fences & Health Scoring',
-      desc: 'Computes a 0–100 data health index, Tukey outlier fences, skewness, and Pearson/Spearman correlation matrices.',
-      stat: '10+ Auto-Drawn SVG Charts'
-    },
-    {
-      id: 'sandbox',
-      label: '🛡️ Sandbox',
-      badge: 'AST-GATED PRIVACY',
-      color: '#EF9F27',
-      title: 'Air-Gapped Python Sandbox',
-      desc: 'Runs 100% in-memory Python with AST code verification. Zero network calls, zero disk writes, zero data retention.',
-      stat: '100% In-Memory Python'
+      desc: 'Calculates missingness gradients, kurtosis, and correlation matrices in native C-accelerated SciPy.',
+      stat: '87/100 Health',
+      pills: [
+        { label: 'Outliers', val: '118 Tukey IQR extreme points', color: '#EF4444' },
+        { label: 'Pearson', val: 'revenue ↔ units: r = +0.82', color: '#10B981' },
+        { label: 'Skew', val: '+1.84 Log-normal distribution', color: '#7F77DD' },
+      ],
+      guarantee: '✦ 10+ Publication-grade SVG charts auto-drawn',
     },
     {
       id: 'agents',
-      label: '🤖 AI Agents',
-      badge: 'LANGGRAPH AGENTS',
+      label: '🤖 Grounded AI',
+      badge: 'LANGGRAPH AGENT',
       color: '#F97316',
-      title: 'Grounded AI Narration',
-      desc: 'Autonomous planner and validator agents translate raw computed statistics into plain-English executive summaries.',
-      stat: '0 Hallucinations Guaranteed'
-    }
+      title: 'Deterministic Plain-English Explanations',
+      desc: 'Translates plain-English business questions into deterministic execution plans and executive takeaways.',
+      stat: '0 Hallucinations',
+      pills: [
+        { label: 'Query', val: '“What drove revenue most?”', color: '#F97316' },
+        { label: 'Receipt', val: 'df.groupby("tier")["revenue"].agg(...)', color: '#38BDF8' },
+        { label: 'Insight', val: 'Volume orders drove 82% of total revenue', color: '#10B981' },
+      ],
+      guarantee: '✦ Grounded strictly on computed Python telemetry',
+    },
   ]
 
   const cur = capabilities[activeTab]
@@ -298,6 +310,7 @@ export function MobileWhatWeDoCards({ onEnter, onDemo }) {
         {capabilities.map((c, i) => (
           <button
             key={c.id}
+            type="button"
             className={`mobile-wwd-tab ${activeTab === i ? 'active' : ''}`}
             onClick={() => setActiveTab(i)}
             style={activeTab === i ? { borderColor: c.color, color: '#fff', background: `${c.color}22` } : {}}
@@ -316,8 +329,23 @@ export function MobileWhatWeDoCards({ onEnter, onDemo }) {
         </div>
         <h4 className="mobile-wwd-title">{cur.title}</h4>
         <p className="mobile-wwd-desc">{cur.desc}</p>
+
+        {cur.pills && (
+          <div className="mobile-wwd-chips-row">
+            {cur.pills.map((p, idx) => (
+              <div key={idx} className="mobile-wwd-chip">
+                {p.raw && <span className="chip-raw">{p.raw}</span>}
+                {p.arrow && <span className="chip-arr">{p.arrow}</span>}
+                {p.type && <span className="chip-type" style={{ color: p.color }}>{p.type}</span>}
+                {p.label && <span className="chip-lbl">{p.label}:</span>}
+                {p.val && <span className="chip-val" style={{ color: p.color }}>{p.val}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="mobile-wwd-foot">
-          <span className="mobile-wwd-guarantee">✦ 100% Local Python Engine · 0 Cloud Retention</span>
+          <span className="mobile-wwd-guarantee">{cur.guarantee}</span>
         </div>
       </div>
     </div>
@@ -328,11 +356,30 @@ export function MobileWhatWeDoCards({ onEnter, onDemo }) {
 export function HeroDataPulse({ onEnter, onDemo }) {
   const [activeTab, setActiveTab] = useState('pulse') // 'pulse' | 'insight' | 'matrix'
   const [hoveredCell, setHoveredCell] = useState(null)
-
-  // Auto-cycle through tabs unless hovered
   const [paused, setPaused] = useState(false)
+  const containerRef = useRef(null)
+  const [inView, setInView] = useState(true)
+
   useEffect(() => {
-    if (paused) return undefined
+    const node = containerRef.current
+    if (!node || typeof IntersectionObserver === 'undefined') return undefined
+    const root = node.closest('.landing-scroll')
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setInView(entry.isIntersecting)
+        if (entry.isIntersecting) {
+          setActiveTab('pulse')
+        }
+      },
+      { root: root || null, threshold: 0.1 }
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+
+  // Auto-cycle through tabs unless hovered or offscreen
+  useEffect(() => {
+    if (paused || !inView) return undefined
     const tabs = ['pulse', 'insight', 'matrix']
     const timer = setInterval(() => {
       setActiveTab((curr) => {
@@ -341,10 +388,11 @@ export function HeroDataPulse({ onEnter, onDemo }) {
       })
     }, 4500)
     return () => clearInterval(timer)
-  }, [paused])
+  }, [paused, inView])
 
   return (
     <div
+      ref={containerRef}
       className="arg-pulse-preview"
       onPointerEnter={() => setPaused(true)}
       onPointerLeave={() => setPaused(false)}
@@ -1096,7 +1144,12 @@ export function WorkspaceShowcase({ onEnter, onDemo }) {
     if (!node || typeof IntersectionObserver === 'undefined') return undefined
     const root = node.closest('.landing-scroll')
     const observer = new IntersectionObserver(
-      ([entry]) => setInView(entry.isIntersecting),
+      ([entry]) => {
+        setInView(entry.isIntersecting)
+        if (entry.isIntersecting) {
+          setScenarioIdx(0)
+        }
+      },
       { root: root || null, threshold: 0.15 }
     )
     observer.observe(node)
@@ -1225,7 +1278,7 @@ export function WorkspaceShowcase({ onEnter, onDemo }) {
       setScenarioIdx((prev) => (prev + 1) % scenarios.length)
     }, 9000)
     return () => clearInterval(interval)
-  }, [isUserInteracting, scenarios.length])
+  }, [isUserInteracting, inView, reducedMotion, scenarios.length])
 
   return (
     <div

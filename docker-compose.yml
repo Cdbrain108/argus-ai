@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  argus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: argus_app
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+      - ARGUS_LLM_PROVIDER=groq
+      - ARGUS_API_KEYS_FILE=/app/api_keys.txt
+    volumes:
+      - ./api_keys.txt:/app/api_keys.txt:ro
+    restart: unless-stopped

@@ -1118,7 +1118,7 @@ select[multiple] { min-height: 44px; }
   align-items: center;
   justify-content: center;
   padding: 20px;
-  z-index: 1000;
+  z-index: 100000 !important;
   animation: modal-fade-in .2s ease-out;
 }
 
@@ -4360,6 +4360,7 @@ select[multiple] { min-height: 44px; }
 .content { position: relative; z-index: 1; }
 
 .workspace-page {
+  contain: layout style;
   animation: workspace-page-in 90ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .workspace-page > .workspace > * {
@@ -4499,10 +4500,42 @@ select[multiple] { min-height: 44px; }
 }
 .chat-panel,
 .context-panel,
-.panel { backdrop-filter: blur(8px); }
+.panel {
+  contain: layout style;
+}
 .context-panel { border-color: rgba(127, 119, 221, .18); }
 .chat-panel { border-color: rgba(56, 189, 248, .15); }
-.chat-messages { background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, .035), transparent 45%); }
+.chat-messages {
+  background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, .035), transparent 45%);
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  will-change: scroll-position;
+}
+.chat-messages .message {
+  content-visibility: auto;
+  contain-intrinsic-size: 80px;
+}
+.schema-columns-feed {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  will-change: scroll-position;
+}
+.schema-col-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 75px;
+}
+.context-overview-scroll {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  will-change: scroll-position;
+}
+.data-table-scroll {
+  contain: paint layout;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  will-change: scroll-position;
+}
 .starter > svg { color: var(--cyan); filter: drop-shadow(0 0 12px rgba(56, 189, 248, .5)); animation: starter-bob 3s ease-in-out infinite; }
 @keyframes starter-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 .composer { background: rgba(11, 15, 28, .68); }
@@ -6889,5 +6922,165 @@ select {
   display: flex;
   gap: 12px;
   justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── Segmented Ingestion Tabs ───────────────────────────────────────────── */
+.arg-upload-tabs-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(10, 14, 26, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 5px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.arg-upload-tab-nav-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.arg-upload-tab-nav-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.arg-upload-tab-nav-btn.active {
+  background: rgba(249, 115, 22, 0.16);
+  border-color: rgba(249, 115, 22, 0.35);
+  color: var(--orange-soft);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* ── Clickable Dataset Status Pill in Topbar ────────────────────────────── */
+.clickable-dataset-pill {
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 4px 10px;
+  transition: all 0.18s ease;
+  font-weight: 500;
+}
+
+.clickable-dataset-pill:hover {
+  background: rgba(249, 115, 22, 0.12);
+  border-color: rgba(249, 115, 22, 0.3);
+  color: #fff;
+}
+
+.clickable-dataset-pill .pill-dropdown-icon {
+  margin-left: 4px;
+  opacity: 0.6;
+  transition: transform 0.18s ease;
+}
+
+.clickable-dataset-pill:hover .pill-dropdown-icon {
+  opacity: 1;
+  transform: translateY(1px);
+}
+
+/* ── Sidebar Switch Dataset Button ───────────────────────────────────────── */
+.sidebar-switch-dataset-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.sidebar-switch-dataset-btn:hover {
+  background: rgba(249, 115, 22, 0.15);
+  border-color: rgba(249, 115, 22, 0.35);
+  color: var(--orange-soft);
+}
+
+.sidebar-switch-dataset-btn.primary {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(234, 88, 12, 0.2));
+  border-color: rgba(249, 115, 22, 0.4);
+  color: #fff;
+}
+
+/* ── Guest Demo Selector Grid in Auth Modal & Page ───────────────────────── */
+.arg-auth-guest-section,
+.auth-guest-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.arg-auth-guest-heading,
+.auth-guest-heading {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--text-dim);
+  text-align: center;
+  display: block;
+}
+
+.arg-auth-guest-grid,
+.auth-guest-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .arg-auth-guest-grid,
+  .auth-guest-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.arg-auth-guest-btn,
+.auth-guest-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.arg-auth-guest-btn:hover,
+.auth-guest-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
 }
 

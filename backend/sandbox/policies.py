@@ -13,6 +13,7 @@ BLOCKED_BUILTINS = {
 ALLOWED_MODULES = {
     "pandas", "numpy", "sklearn", "scipy", "math", "statistics",
     "pd", "np", "itertools", "functools", "collections",
+    "re", "datetime", "dateutil", "statsmodels",
 }
 
 MAX_TIMEOUT_SECONDS = 30

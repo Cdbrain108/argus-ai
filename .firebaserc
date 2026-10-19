@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "samvaad-ai-db3a1"
+  },
+  "targets": {
+    "samvaad-ai-db3a1": {
+      "hosting": {
+        "argus-eda": [
+          "argus-eda"
+        ]
+      }
+    }
+  }
+}

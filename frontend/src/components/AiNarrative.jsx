@@ -1,11 +1,6 @@
-import React, { useEffect } from 'react'
-import { LoaderCircle, Sparkles } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { LoaderCircle, RotateCcw, Sparkles } from 'lucide-react'
 import { useTypedText } from '../hooks'
-
-/* Cache of narratives that have already completed typing once.
-   When the user switches tabs (e.g. Dataset -> AI Analyst -> Dataset),
-   the stored narrative renders immediately with zero delay or re-typing. */
-const seenNarratives = new Set()
 
 export default function AiNarrative({
   payload,
@@ -15,19 +10,32 @@ export default function AiNarrative({
   tight = false,
 }) {
   const text = payload?.text || ''
-  const alreadySeen = Boolean(text && seenNarratives.has(text))
-  const { text: typed, done, skip } = useTypedText(text, { delay: 15, chunkSize: 3, active: !alreadySeen })
+  const [replayCount, setReplayCount] = useState(0)
 
+  // Natural typewriter pacing: 1 word every 26ms (~38 words/sec) with glowing cyan cursor
+  // ignoreReducedMotion ensures Windows visual performance settings don't bypass animation
+  const { text: typed, done, skip, replay } = useTypedText(text, {
+    delay: 26,
+    chunkSize: 1,
+    active: true,
+    ignoreReducedMotion: true,
+  })
+
+  // Whenever text updates or user requests replay, trigger typewriter from start
   useEffect(() => {
-    if (text && done) {
-      seenNarratives.add(text)
+    if (text) {
+      replay()
     }
-  }, [text, done])
+  }, [text, replayCount])
 
   const handleSkip = (e) => {
     if (e) e.stopPropagation()
-    if (text) seenNarratives.add(text)
     skip()
+  }
+
+  const handleReplay = (e) => {
+    if (e) e.stopPropagation()
+    setReplayCount((c) => c + 1)
   }
 
   const size = `${compact ? ' compact' : ''}${tight ? ' tight' : ''}`
@@ -60,16 +68,28 @@ export default function AiNarrative({
           <Sparkles size={12} /> {label}
           {deterministic && <em className="ai-narrative-tag">computed, not generated</em>}
         </span>
-        {!done && (
-          <button
-            type="button"
-            className="ai-skip-btn"
-            onClick={handleSkip}
-            title="Show full summary instantly"
-          >
-            ⚡ Show Full
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {!done ? (
+            <button
+              type="button"
+              className="ai-skip-btn"
+              onClick={handleSkip}
+              title="Show full summary instantly"
+            >
+              ⚡ Show Full
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="ai-skip-btn"
+              onClick={handleReplay}
+              title="Replay typing animation"
+              style={{ opacity: 0.85 }}
+            >
+              <RotateCcw size={11} /> Replay
+            </button>
+          )}
+        </div>
       </div>
       <p className="ai-narrative-body">
         {typed}

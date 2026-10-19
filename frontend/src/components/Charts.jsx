@@ -33,13 +33,10 @@ export function ScatterPlot({ data }) {
 
   // Color mapping if categories exist
   const distinctCats = Array.from(new Set(validPairs.map((p) => p[2]).filter(Boolean)))
-  const palette = ['#10b981', '#f43f5e', '#38bdf8', '#f59e0b', '#a855f7', '#ec4899']
+  const palette = ['#38bdf8', '#818cf8', '#34d399', '#f59e0b', '#ec4899', '#f87171', '#a78bfa']
   const catColorMap = {}
   distinctCats.forEach((c, idx) => {
-    const cLow = c.toLowerCase()
-    if (cLow.includes('surviv') && !cLow.includes('not') && !cLow.includes('perish')) catColorMap[c] = '#10b981'
-    else if (cLow.includes('perish') || cLow.includes('died') || cLow.includes('not') || c === '0') catColorMap[c] = '#f43f5e'
-    else catColorMap[c] = palette[idx % palette.length]
+    catColorMap[c] = palette[idx % palette.length]
   })
 
   const xNums = validPairs.map((p) => p[0])
@@ -379,6 +376,11 @@ function tryParseGroupedData(vizData, analysisName) {
       if (tokens.length >= 2) {
         parts = [tokens[0], tokens.slice(1).join(' ')]
       }
+    } else if (rawLbl.includes(' ')) {
+      const tokens = rawLbl.trim().split(/\s+/).filter(Boolean)
+      if (tokens.length >= 2) {
+        parts = [tokens[0], tokens.slice(1).join(' ')]
+      }
     }
 
     if (parts.length >= 2) {
@@ -424,10 +426,579 @@ function tryParseGroupedData(vizData, analysisName) {
   return {
     title: analysisName || vizData.yLabel || 'Multivariate Group Comparison',
     xLabel: vizData.xLabel || 'Group',
-    yLabel: vizData.yLabel || 'Average Value',
+    yLabel: vizData.yLabel || 'Value',
+    unit: vizData.unit,
+    entityName: vizData.entityName,
+    metricLabel: vizData.metricLabel,
     groups,
     series,
   }
+}
+
+// ── Cleveland Dumbbell / Connected Dot Plot ──────────────────────────────
+export function DumbbellPlot({ data }) {
+  const [hovered, setHovered] = useState(null)
+  const categories = data?.categories || []
+  const series = data?.series || []
+  const title = data?.title || 'Comparative Dumbbell Plot'
+  const xLabel = data?.xLabel || 'Metric Value'
+  const yLabel = data?.yLabel || 'Category'
+
+  if (!categories.length) {
+    return <div className="chart-empty">No comparison data available.</div>
+  }
+
+  // Intelligent unit & currency detection
+  const explicitUnit = data?.unit || ''
+  const isCurrency = explicitUnit === '$' || (
+    Boolean(
+      (data?.xLabel && /(?:\$|\bfare\b|\bprice\b|\bcost\b|\bsalary\b|\brevenue\b|\bbudget\b|\bfee\b|\bincome\b|\bamount\b)/i.test(data.xLabel)) ||
+      (data?.title && /(?:\$|\bfare\b|\bprice\b|\bcost\b|\bsalary\b|\brevenue\b|\bbudget\b|\bfee\b|\bincome\b|\bamount\b)/i.test(data.title))
+    )
+  )
+  const unitPrefix = isCurrency ? '$' : (explicitUnit.startsWith('$') ? '$' : '')
+  const unitSuffix = (!isCurrency && explicitUnit && !explicitUnit.startsWith('$')) ? ` ${explicitUnit}` : ''
+
+  const formatVal = (val, maxDecimals = 1) => {
+    if (val === null || val === undefined || isNaN(Number(val))) return '—'
+    const num = Number(val)
+    if (Math.abs(num) >= 1000) return `${unitPrefix}${(num / 1000).toFixed(1)}k${unitSuffix}`
+    const formatted = num % 1 === 0 ? num.toFixed(0) : num.toFixed(maxDecimals)
+    return `${unitPrefix}${formatted}${unitSuffix}`
+  }
+
+  const allValues = categories.flatMap(c => (c.points || []).map(p => Number(p.value) || 0))
+  let minVal = Math.min(...allValues)
+  let maxVal = Math.max(...allValues)
+  if (minVal === maxVal) {
+    minVal = Math.max(0, minVal - 10)
+    maxVal = maxVal + 10
+  } else {
+    const pad = (maxVal - minVal) * 0.15 || 5
+    minVal = Math.max(0, minVal - pad)
+    maxVal = maxVal + pad
+  }
+
+  const width = 640
+  const rowHeight = 64
+  const mLeft = 100
+  const mRight = 80
+  const mTop = 40
+  const mBottom = 45
+  const height = mTop + categories.length * rowHeight + mBottom
+
+  const plotW = width - mLeft - mRight
+  const plotH = height - mTop - mBottom
+
+  const getX = (val) => mLeft + ((val - minVal) / (maxVal - minVal || 1)) * plotW
+
+  const defaultColors = ['#38bdf8', '#818cf8', '#34d399', '#f59e0b', '#ec4899', '#f87171', '#a78bfa']
+  const getPointColor = (pt, idx) => pt.color || defaultColors[idx % defaultColors.length]
+
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map(pct => minVal + pct * (maxVal - minVal))
+
+  return (
+    <div className="argus-chart-card multivariate-card">
+      <div className="chart-header">
+        <div>
+          <span className="chart-title">{title}</span>
+          <span style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginTop: 2 }}>
+            Connected dot plot measuring gap across {yLabel}
+          </span>
+        </div>
+        <div className="grouped-legend">
+          {(series.length ? series : categories[0]?.points || []).map((s, idx) => (
+            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', color: '#cbd5e1' }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: s.color || getPointColor(s, idx) }} />
+              <span style={{ fontWeight: 500 }}>{s.name || s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="svg-container" style={{ position: 'relative' }}>
+        <svg viewBox={`0 0 ${width} ${height}`} className="argus-svg" style={{ width: '100%', height: 'auto' }}>
+          <rect x={mLeft} y={mTop} width={plotW} height={plotH} fill="#111827" rx="8" />
+
+          {/* Grid lines */}
+          {ticks.map((tVal, idx) => {
+            const x = getX(tVal)
+            return (
+              <g key={idx}>
+                <line x1={x} y1={mTop} x2={x} y2={mTop + plotH} stroke="#1e293b" strokeDasharray="3 3" />
+                <text x={x} y={mTop + plotH + 18} fill="#64748b" fontSize="10" textAnchor="middle" fontFamily="monospace">
+                  {formatVal(tVal, 0)}
+                </text>
+              </g>
+            )
+          })}
+
+          {/* Dumbbell rows */}
+          {categories.map((cat, cIdx) => {
+            const y = mTop + cIdx * rowHeight + rowHeight / 2
+            const pts = cat.points || []
+            if (pts.length < 2) return null
+
+            const sortedPts = [...pts].sort((a, b) => Number(a.value) - Number(b.value))
+            const minX = getX(Number(sortedPts[0].value) || 0)
+            const maxX = getX(Number(sortedPts[sortedPts.length - 1].value) || 0)
+            const gap = Number(sortedPts[sortedPts.length - 1].value) - Number(sortedPts[0].value)
+            const gapStr = Math.abs(gap) < 0.05 ? '0' : (gap > 0 ? `+${gap.toFixed(1)}` : gap.toFixed(1))
+
+            return (
+              <g key={cIdx} className="dumbbell-row">
+                <rect
+                  x={mLeft + 4}
+                  y={y - rowHeight / 2 + 4}
+                  width={plotW - 8}
+                  height={rowHeight - 8}
+                  fill={cIdx % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent'}
+                  rx="6"
+                />
+
+                <text
+                  x={mLeft - 14}
+                  y={y + 4.5}
+                  fill="#f1f5f9"
+                  fontSize="12.5"
+                  fontWeight="600"
+                  textAnchor="end"
+                >
+                  {cat.name}
+                </text>
+
+                <line
+                  x1={minX}
+                  y1={y}
+                  x2={maxX}
+                  y2={y}
+                  stroke="#334155"
+                  strokeWidth="5"
+                  strokeLinecap="round"
+                />
+                <line
+                  x1={minX}
+                  y1={y}
+                  x2={maxX}
+                  y2={y}
+                  stroke="rgba(56, 189, 248, 0.45)"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+
+                {pts.map((pt, pIdx) => {
+                  const pVal = Number(pt.value) || 0
+                  const px = getX(pVal)
+                  const pColor = getPointColor(pt, pIdx)
+
+                  return (
+                    <g
+                      key={pIdx}
+                      style={{ cursor: 'pointer' }}
+                      onMouseEnter={() => setHovered({ category: cat.name, gap, ...pt, px, py: y })}
+                      onMouseLeave={() => setHovered(null)}
+                    >
+                      <circle cx={px} cy={y} r="9" fill={pColor} fillOpacity="0.25" />
+                      <circle cx={px} cy={y} r="6.5" fill={pColor} stroke="#0f172a" strokeWidth="2" />
+
+                      <text
+                        x={px}
+                        y={y - 12}
+                        fill="#f8fafc"
+                        fontSize="10"
+                        fontWeight="700"
+                        textAnchor="middle"
+                        fontFamily="monospace"
+                      >
+                        {formatVal(pVal, 1)}
+                      </text>
+                    </g>
+                  )
+                })}
+
+                <g transform={`translate(${maxX + 18}, ${y})`}>
+                  <rect x="-4" y="-9" width="46" height="18" rx="4" fill="rgba(30, 41, 59, 0.85)" stroke="#334155" strokeWidth="1" />
+                  <text x="19" y="3.5" fill="#38bdf8" fontSize="9.5" fontWeight="600" textAnchor="middle" fontFamily="monospace">
+                    Δ {gapStr}
+                  </text>
+                </g>
+              </g>
+            )
+          })}
+
+          <text x={mLeft + plotW / 2} y={height - 8} fill="#94a3b8" fontSize="11" fontWeight="600" textAnchor="middle">
+            {xLabel}
+          </text>
+        </svg>
+
+        {hovered && (
+          <div
+            className="chart-tooltip"
+            style={{
+              position: 'absolute',
+              left: `${(hovered.px / width) * 100}%`,
+              top: `${Math.max(10, (hovered.py / height) * 100 - 20)}%`,
+              transform: 'translate(-50%, -100%)',
+              background: '#0f172a',
+              border: '1px solid #334155',
+              borderRadius: 8,
+              padding: '8px 12px',
+              fontSize: '0.8rem',
+              color: '#f8fafc',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+              pointerEvents: 'none',
+              zIndex: 30,
+              minWidth: 150,
+            }}
+          >
+            <div style={{ fontWeight: 600, color: '#38bdf8', marginBottom: 3 }}>
+              {hovered.category} · {hovered.label}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+              <span style={{ color: '#94a3b8' }}>{xLabel}:</span>
+              <span style={{ fontWeight: 700, color: getPointColor(hovered, 0) }}>
+                {formatVal(hovered.value, 1)}
+              </span>
+            </div>
+            {hovered.gap !== undefined && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 3 }}>
+                <span style={{ color: '#94a3b8' }}>Gap (Delta):</span>
+                <span style={{ fontWeight: 600, color: '#38bdf8' }}>{hovered.gap.toFixed(1)}{unitSuffix}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div
+        className="grouped-cohort-cards"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${Math.min(4, categories.flatMap(c => c.points || []).length)}, 1fr)`,
+          gap: 10,
+          marginTop: 14,
+        }}
+      >
+        {categories.flatMap(c => (c.points || []).map(p => ({ ...p, category: c.name, gap: c.gap }))).map((card, idx) => (
+          <div
+            key={idx}
+            style={{
+              background: 'rgba(15, 23, 42, 0.65)',
+              border: '1px solid rgba(51, 65, 85, 0.45)',
+              borderRadius: 8,
+              padding: '10px 12px',
+              borderLeft: `3px solid ${getPointColor(card, idx)}`,
+            }}
+          >
+            <div style={{ fontSize: '0.73rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#94a3b8' }}>
+              {card.category} · {card.label}
+            </div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc', marginTop: 4, fontFamily: 'monospace' }}>
+              {formatVal(card.value, 1)}
+            </div>
+            <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: 2 }}>
+              {xLabel}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Grouped Box-and-Whisker Plot ─────────────────────────────────────────
+export function BoxPlot({ data }) {
+  const [hovered, setHovered] = useState(null)
+  const groups = data?.groups || []
+  const series = data?.series || []
+  const title = data?.title || 'Distribution Spread (Box Plot)'
+  const xLabel = data?.xLabel || 'Category'
+  const yLabel = data?.yLabel || 'Value'
+
+  if (!groups.length) {
+    return <div className="chart-empty">No distribution box plot data available.</div>
+  }
+
+  // Intelligent unit & currency detection
+  const explicitUnit = data?.unit || ''
+  const isCurrency = explicitUnit === '$' || (
+    Boolean(
+      (data?.yLabel && /(?:\$|\bfare\b|\bprice\b|\bcost\b|\bsalary\b|\brevenue\b|\bbudget\b|\bfee\b|\bincome\b|\bamount\b)/i.test(data.yLabel)) ||
+      (data?.title && /(?:\$|\bfare\b|\bprice\b|\bcost\b|\bsalary\b|\brevenue\b|\bbudget\b|\bfee\b|\bincome\b|\bamount\b)/i.test(data.title))
+    )
+  )
+  const unitPrefix = isCurrency ? '$' : (explicitUnit.startsWith('$') ? '$' : '')
+  const unitSuffix = (!isCurrency && explicitUnit && !explicitUnit.startsWith('$')) ? ` ${explicitUnit}` : ''
+
+  const formatVal = (val, maxDecimals = 1) => {
+    if (val === null || val === undefined || isNaN(Number(val))) return '—'
+    const num = Number(val)
+    if (Math.abs(num) >= 1000) return `${unitPrefix}${(num / 1000).toFixed(1)}k${unitSuffix}`
+    const formatted = num % 1 === 0 ? num.toFixed(0) : num.toFixed(maxDecimals)
+    return `${unitPrefix}${formatted}${unitSuffix}`
+  }
+
+  const allVals = groups.flatMap(g => (g.boxes || []).flatMap(b => [b.min, b.q25, b.median, b.q75, b.max].filter(v => v !== undefined && !isNaN(Number(v)))))
+  let minY = Math.min(...allVals)
+  let maxY = Math.max(...allVals)
+  if (minY === maxY) {
+    minY = Math.max(0, minY - 10)
+    maxY = maxY + 10
+  } else {
+    const pad = (maxY - minY) * 0.1 || 5
+    minY = Math.max(0, minY - pad)
+    maxY = maxY + pad
+  }
+
+  const width = 640
+  const height = 320
+  const mLeft = 60
+  const mRight = 24
+  const mTop = 38
+  const mBottom = 52
+
+  const plotW = width - mLeft - mRight
+  const plotH = height - mTop - mBottom
+
+  const groupWidth = plotW / groups.length
+  const nBoxes = Math.max(...groups.map(g => (g.boxes || []).length), 1)
+  const boxW = Math.min(44, Math.max(16, (groupWidth * 0.6) / nBoxes))
+  const boxGap = 8
+  const groupBoxesWidth = nBoxes * boxW + (nBoxes - 1) * boxGap
+
+  const getY = (val) => mTop + plotH - ((val - minY) / (maxY - minY || 1)) * plotH
+
+  const defaultColors = ['#10b981', '#f43f5e', '#38bdf8', '#f59e0b', '#8b5cf6']
+  const getBoxColor = (box, idx) => {
+    if (box.color) return box.color
+    const lbl = String(box.label || '').toLowerCase()
+    if (lbl.includes('surviv') && !lbl.includes('not') && !lbl.includes('perish')) return '#10b981'
+    if (lbl.includes('perish') || lbl.includes('died') || lbl.includes('not') || lbl.includes('0')) return '#f43f5e'
+    return defaultColors[idx % defaultColors.length]
+  }
+
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(pct => minY + pct * (maxY - minY))
+
+  return (
+    <div className="argus-chart-card multivariate-card">
+      <div className="chart-header">
+        <div>
+          <span className="chart-title">{title}</span>
+          <span style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginTop: 2 }}>
+            Quartile distribution, median, and spread across {xLabel}
+          </span>
+        </div>
+        <div className="grouped-legend">
+          {(series.length ? series : groups[0]?.boxes || []).map((s, idx) => (
+            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', color: '#cbd5e1' }}>
+              <span style={{ width: 11, height: 11, borderRadius: 3, background: s.color || getBoxColor(s, idx) }} />
+              <span style={{ fontWeight: 500 }}>{s.name || s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="svg-container" style={{ position: 'relative' }}>
+        <svg viewBox={`0 0 ${width} ${height}`} className="argus-svg" style={{ width: '100%', height: 'auto' }}>
+          <rect x={mLeft} y={mTop} width={plotW} height={plotH} fill="#111827" rx="8" />
+
+          {/* Grid lines */}
+          {yTicks.map((yVal, idx) => {
+            const y = getY(yVal)
+            return (
+              <g key={idx}>
+                <line x1={mLeft} y1={y} x2={mLeft + plotW} y2={y} stroke="#1e293b" strokeDasharray="3 3" />
+                <text x={mLeft - 8} y={y + 3.5} fill="#64748b" fontSize="10" textAnchor="end" fontFamily="monospace">
+                  {formatVal(yVal, 0)}
+                </text>
+              </g>
+            )
+          })}
+
+          {/* Groups */}
+          {groups.map((group, gIdx) => {
+            const groupCenterX = mLeft + gIdx * groupWidth + groupWidth / 2
+            const startX = groupCenterX - groupBoxesWidth / 2
+
+            return (
+              <g key={gIdx} className="box-group">
+                <rect
+                  x={mLeft + gIdx * groupWidth + 6}
+                  y={mTop + 4}
+                  width={groupWidth - 12}
+                  height={plotH - 8}
+                  fill="rgba(255,255,255,0.015)"
+                  rx="6"
+                />
+
+                {(group.boxes || []).map((box, bIdx) => {
+                  const x = startX + bIdx * (boxW + boxGap)
+                  const boxCenterX = x + boxW / 2
+                  const yMin = getY(box.min ?? box.q25)
+                  const yQ25 = getY(box.q25)
+                  const yMed = getY(box.median)
+                  const yQ75 = getY(box.q75)
+                  const yMax = getY(box.max ?? box.q75)
+                  const color = getBoxColor(box, bIdx)
+                  const boxHeight = Math.max(3, yQ25 - yQ75)
+
+                  return (
+                    <g
+                      key={bIdx}
+                      style={{ cursor: 'pointer' }}
+                      onMouseEnter={() => setHovered({ group: group.name, ...box, px: boxCenterX, py: yMed })}
+                      onMouseLeave={() => setHovered(null)}
+                    >
+                      {/* Whisker line from Min to Max */}
+                      <line x1={boxCenterX} y1={yMin} x2={boxCenterX} y2={yQ25} stroke={color} strokeWidth="1.5" strokeDasharray="2 2" />
+                      <line x1={boxCenterX} y1={yQ75} x2={boxCenterX} y2={yMax} stroke={color} strokeWidth="1.5" strokeDasharray="2 2" />
+
+                      {/* Whisker caps */}
+                      <line x1={boxCenterX - boxW * 0.3} y1={yMin} x2={boxCenterX + boxW * 0.3} y2={yMin} stroke={color} strokeWidth="1.8" />
+                      <line x1={boxCenterX - boxW * 0.3} y1={yMax} x2={boxCenterX + boxW * 0.3} y2={yMax} stroke={color} strokeWidth="1.8" />
+
+                      {/* IQR Box (Q25 to Q75) */}
+                      <rect
+                        x={x}
+                        y={yQ75}
+                        width={boxW}
+                        height={boxHeight}
+                        fill={color}
+                        fillOpacity="0.25"
+                        stroke={color}
+                        strokeWidth="1.5"
+                        rx="3"
+                      />
+
+                      {/* Median Line (Bright high contrast white) */}
+                      <line
+                        x1={x}
+                        y1={yMed}
+                        x2={x + boxW}
+                        y2={yMed}
+                        stroke="#ffffff"
+                        strokeWidth="2.5"
+                      />
+
+                      <text
+                        x={boxCenterX}
+                        y={yMed - 4}
+                        fill="#ffffff"
+                        fontSize="9.5"
+                        fontWeight="700"
+                        textAnchor="middle"
+                        fontFamily="monospace"
+                        filter="drop-shadow(0 1px 2px rgba(0,0,0,0.8))"
+                      >
+                        {formatVal(box.median, 1)}
+                      </text>
+                    </g>
+                  )
+                })}
+
+                <text
+                  x={groupCenterX}
+                  y={mTop + plotH + 22}
+                  fill="#f1f5f9"
+                  fontSize="13"
+                  fontWeight="600"
+                  textAnchor="middle"
+                >
+                  {group.name}
+                </text>
+              </g>
+            )
+          })}
+
+          <text x={mLeft + plotW / 2} y={height - 8} fill="#94a3b8" fontSize="11" fontWeight="600" textAnchor="middle">
+            {xLabel}
+          </text>
+          <text
+            x={16}
+            y={mTop + plotH / 2}
+            fill="#94a3b8"
+            fontSize="10.5"
+            fontWeight="500"
+            textAnchor="middle"
+            transform={`rotate(-90, 16, ${mTop + plotH / 2})`}
+          >
+            {yLabel}
+          </text>
+        </svg>
+
+        {hovered && (
+          <div
+            className="chart-tooltip"
+            style={{
+              position: 'absolute',
+              left: `${(hovered.px / width) * 100}%`,
+              top: `${Math.max(10, (hovered.py / height) * 100 - 20)}%`,
+              transform: 'translate(-50%, -100%)',
+              background: '#0f172a',
+              border: '1px solid #334155',
+              borderRadius: 8,
+              padding: '8px 12px',
+              fontSize: '0.8rem',
+              color: '#f8fafc',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+              pointerEvents: 'none',
+              zIndex: 30,
+              minWidth: 160,
+            }}
+          >
+            <div style={{ fontWeight: 600, color: '#38bdf8', marginBottom: 4 }}>
+              {hovered.group} · {hovered.label}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '3px 12px', fontSize: '0.78rem' }}>
+              <span style={{ color: '#94a3b8' }}>Max (Whisker):</span>
+              <span style={{ fontWeight: 600, textAlign: 'right' }}>{formatVal(hovered.max, 1)}</span>
+              <span style={{ color: '#94a3b8' }}>Q3 (75th%):</span>
+              <span style={{ fontWeight: 600, textAlign: 'right' }}>{formatVal(hovered.q75, 1)}</span>
+              <span style={{ color: '#38bdf8', fontWeight: 600 }}>Median:</span>
+              <span style={{ fontWeight: 700, color: '#22c55e', textAlign: 'right' }}>{formatVal(hovered.median, 1)}</span>
+              <span style={{ color: '#94a3b8' }}>Q1 (25th%):</span>
+              <span style={{ fontWeight: 600, textAlign: 'right' }}>{formatVal(hovered.q25, 1)}</span>
+              <span style={{ color: '#94a3b8' }}>Min (Whisker):</span>
+              <span style={{ fontWeight: 600, textAlign: 'right' }}>{formatVal(hovered.min, 1)}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div
+        className="grouped-cohort-cards"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${Math.min(4, groups.flatMap(g => g.boxes || []).length)}, 1fr)`,
+          gap: 10,
+          marginTop: 14,
+        }}
+      >
+        {groups.flatMap(g => (g.boxes || []).map(b => ({ ...b, group: g.name }))).map((card, idx) => (
+          <div
+            key={idx}
+            style={{
+              background: 'rgba(15, 23, 42, 0.65)',
+              border: '1px solid rgba(51, 65, 85, 0.45)',
+              borderRadius: 8,
+              padding: '10px 12px',
+              borderLeft: `3px solid ${getBoxColor(card, idx)}`,
+            }}
+          >
+            <div style={{ fontSize: '0.73rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#94a3b8' }}>
+              {card.group} · {card.label}
+            </div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc', marginTop: 4, fontFamily: 'monospace' }}>
+              {formatVal(card.median, 1)}
+            </div>
+            <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: 2 }}>
+              Median (IQR: {formatVal(card.q25, 0)} – {formatVal(card.q75, 0)})
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 // ── Grouped Bar / Multivariate Comparison Chart ───────────────────────────
@@ -441,6 +1012,30 @@ export function GroupedBarChart({ data }) {
 
   if (!groups.length) {
     return <div className="chart-empty">No grouped comparison data available.</div>
+  }
+
+  // Intelligent unit & currency detection across any dataset
+  const explicitUnit = data?.unit || ''
+  const isCurrency = explicitUnit === '$' || (
+    Boolean(
+      (data?.yLabel && /(?:\$|\bfare\b|\bprice\b|\bcost\b|\bsalary\b|\brevenue\b|\bbudget\b|\bfee\b|\bincome\b|\bamount\b)/i.test(data.yLabel)) ||
+      (data?.title && /(?:\$|\bfare\b|\bprice\b|\bcost\b|\bsalary\b|\brevenue\b|\bbudget\b|\bfee\b|\bincome\b|\bamount\b)/i.test(data.title))
+    )
+  )
+
+  const unitPrefix = isCurrency ? '$' : (explicitUnit.startsWith('$') ? '$' : '')
+  const unitSuffix = (!isCurrency && explicitUnit && !explicitUnit.startsWith('$')) ? ` ${explicitUnit}` : ''
+  const entityLabel = data?.entity_name || data?.entityName || 'records'
+  const metricLabel = data?.metricLabel || (yLabel ? yLabel.replace(/\s*\([^)]*\)/, '') : 'Cohort Metric')
+
+  const formatVal = (val, maxDecimals = 1) => {
+    if (val === null || val === undefined || isNaN(Number(val))) return '—'
+    const num = Number(val)
+    if (Math.abs(num) >= 1000) {
+      return `${unitPrefix}${(num / 1000).toFixed(1)}k${unitSuffix}`
+    }
+    const formatted = num % 1 === 0 ? num.toFixed(0) : num.toFixed(maxDecimals)
+    return `${unitPrefix}${formatted}${unitSuffix}`
   }
 
   const allValues = groups.flatMap(g => g.bars.map(b => Number(b.value) || 0))
@@ -462,14 +1057,8 @@ export function GroupedBarChart({ data }) {
   const barGap = 8
   const groupBarsWidth = nBars * barW + (nBars - 1) * barGap
 
-  const defaultColors = ['#10b981', '#f43f5e', '#38bdf8', '#f59e0b', '#8b5cf6']
-  const getColor = (bar, idx) => {
-    if (bar.color) return bar.color
-    const lbl = String(bar.label).toLowerCase()
-    if (lbl.includes('surviv') && !lbl.includes('not') && !lbl.includes('perish')) return '#10b981'
-    if (lbl.includes('perish') || lbl.includes('died') || lbl.includes('not')) return '#f43f5e'
-    return defaultColors[idx % defaultColors.length]
-  }
+  const defaultColors = ['#38bdf8', '#818cf8', '#34d399', '#f59e0b', '#ec4899', '#f87171', '#a78bfa']
+  const getColor = (bar, idx) => bar.color || defaultColors[idx % defaultColors.length]
 
   return (
     <div className="argus-chart-card multivariate-card">
@@ -477,7 +1066,7 @@ export function GroupedBarChart({ data }) {
         <div>
           <span className="chart-title">{title}</span>
           <span style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginTop: 2 }}>
-            Side-by-side comparison across {xLabel} segmented by outcome
+            Side-by-side comparison across {xLabel}
           </span>
         </div>
         <div className="grouped-legend">
@@ -497,12 +1086,11 @@ export function GroupedBarChart({ data }) {
           {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
             const y = mTop + plotH - pct * plotH
             const val = pct * maxVal
-            const formatted = val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val.toFixed(0)
             return (
               <g key={idx}>
                 <line x1={mLeft} y1={y} x2={mLeft + plotW} y2={y} stroke="#1e293b" strokeDasharray="3 3" />
                 <text x={mLeft - 8} y={y + 3.5} fill="#64748b" fontSize="10" textAnchor="end" fontFamily="monospace">
-                  ${formatted}
+                  {formatVal(val, 0)}
                 </text>
               </g>
             )
@@ -566,7 +1154,7 @@ export function GroupedBarChart({ data }) {
                           textAnchor="middle"
                           fontFamily="monospace"
                         >
-                          ${bVal >= 1000 ? `${(bVal / 1000).toFixed(1)}k` : bVal.toFixed(1)}
+                          {formatVal(bVal, bVal % 1 === 0 ? 0 : 1)}
                         </text>
                       )}
                     </g>
@@ -629,19 +1217,25 @@ export function GroupedBarChart({ data }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <span style={{ color: '#94a3b8' }}>{yLabel}:</span>
               <span style={{ fontWeight: 600, color: '#22c55e' }}>
-                ${Number(hovered.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {formatVal(hovered.value, hovered.value % 1 === 0 ? 0 : 2)}
               </span>
             </div>
             {hovered.count && (
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 2 }}>
-                <span style={{ color: '#94a3b8' }}>Passengers:</span>
-                <span style={{ fontWeight: 500 }}>{hovered.count.toLocaleString()}</span>
+                <span style={{ color: '#94a3b8' }}>Count:</span>
+                <span style={{ fontWeight: 500 }}>{hovered.count.toLocaleString()} {entityLabel}</span>
               </div>
             )}
-            {hovered.median && (
+            {hovered.median !== undefined && hovered.median !== null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 2 }}>
                 <span style={{ color: '#94a3b8' }}>Median:</span>
-                <span style={{ fontWeight: 500 }}>${Number(hovered.median).toFixed(2)}</span>
+                <span style={{ fontWeight: 500 }}>{formatVal(hovered.median, hovered.median % 1 === 0 ? 0 : 1)}</span>
+              </div>
+            )}
+            {hovered.mean !== undefined && hovered.mean !== null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 2 }}>
+                <span style={{ color: '#94a3b8' }}>Mean:</span>
+                <span style={{ fontWeight: 500 }}>{formatVal(hovered.mean, hovered.mean % 1 === 0 ? 0 : 1)}</span>
               </div>
             )}
           </div>
@@ -672,10 +1266,10 @@ export function GroupedBarChart({ data }) {
               {card.group} · {card.label}
             </div>
             <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc', marginTop: 4, fontFamily: 'monospace' }}>
-              ${Number(card.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {formatVal(card.value, card.value % 1 === 0 ? 0 : 2)}
             </div>
             <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: 2 }}>
-              {card.count ? `${card.count.toLocaleString()} passengers` : 'Average cohort metric'}
+              {card.count ? `${card.count.toLocaleString()} ${entityLabel}` : metricLabel}
             </div>
           </div>
         ))}
@@ -1460,8 +2054,17 @@ function SubChart({ chart }) {
 export default function MasterChart({ result }) {
   if (!result) return null
 
+  const aType = result.analysis_type || result.type || result.visualization?.type || ''
   const viz = result.visualization || result.chart
-  const aType = result.analysis_type
+  // Cleveland Dumbbell / Connected Dot Plot
+  if ((viz?.type === 'dumbbell' || viz?.type === 'dot_plot' || viz?.type === 'barbell') && viz.data) {
+    return <DumbbellPlot data={viz.data} />
+  }
+
+  // Distribution Box-and-Whisker Plot
+  if ((viz?.type === 'box_plot' || viz?.type === 'boxplot') && viz.data) {
+    return <BoxPlot data={viz.data} />
+  }
 
   // Grouped Bar / Multivariate Side-by-Side Comparison
   if ((viz?.type === 'grouped_bar' || viz?.type === 'multivariate_grouped') && viz.data) {

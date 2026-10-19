@@ -115,11 +115,20 @@ const DESKTOP_NAV_ITEMS = [
   { id: 'faq', label: 'FAQ', matchIds: ['faq', 'auth-cta'] },
 ]
 
-function useTypewriter(phrases) {
+function useTypewriter(phrases, active = true) {
   const [text, setText] = useState('')
   const state = useRef({ index: 0, char: 0, deleting: false })
 
+  // Reset to starting point whenever landed on home
   useEffect(() => {
+    if (active) {
+      state.current = { index: 0, char: 0, deleting: false }
+      setText('')
+    }
+  }, [active])
+
+  useEffect(() => {
+    if (!active) return undefined
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
       setText(phrases[0])
       return undefined
@@ -135,9 +144,9 @@ function useTypewriter(phrases) {
       else if (s.deleting && s.char === 0) { s.deleting = false; s.index += 1; delay = 320 }
       timer = setTimeout(tick, delay)
     }
-    timer = setTimeout(tick, 500)
+    timer = setTimeout(tick, 400)
     return () => clearTimeout(timer)
-  }, [phrases])
+  }, [phrases, active])
 
   return text
 }
@@ -236,18 +245,21 @@ function MobileHero({ typed, onEnter, onDemo, statsList, statsShown, statsRef, o
         </button>
       </div>
 
-      {/* Interactive Mobile What We Do Superpower Cards */}
+      {/* Interactive Mobile Live Capability Spotlight (Non-Redundant) */}
       <MobileWhatWeDoCards onEnter={onEnter} onDemo={onDemo} />
 
       {/* Anchored Bottom 4-Stat Strip & Scroll Indicator */}
       <div className="mobile-hero-bottom-dock">
         <div className="mobile-hero-stats-strip" ref={statsRef}>
-          {statsList.map(([val, lbl]) => (
-            <div key={lbl} className="mobile-stat-cell">
-              <b>{val}</b>
-              <span>{lbl.split(' ')[0]}</span>
-            </div>
-          ))}
+          {statsList.map(([val, lbl]) => {
+            const shortLabel = lbl.includes('dataset') ? 'Datasets' : lbl.includes('rating') ? 'Rating' : lbl.includes('chart') ? 'Charts' : 'Speed'
+            return (
+              <div key={lbl} className="mobile-stat-cell">
+                <b>{val}</b>
+                <span>{shortLabel}</span>
+              </div>
+            )
+          })}
         </div>
         <button
           type="button"
@@ -325,72 +337,68 @@ function MobileArchitecture({ onDemo, onEnter, onNext }) {
 }
 
 function MobileFaq({ faqs, onDemo, onNext }) {
-  const [activeFaq, setActiveFaq] = useState(0)
-  const current = faqs[activeFaq]
+  const [openIndex, setOpenIndex] = useState(null)
+
+  const toggleIndex = (idx) => {
+    setOpenIndex((prev) => (prev === idx ? null : idx))
+  }
 
   const categories = [
-    { label: 'Privacy', icon: '🔒' },
-    { label: 'Formats', icon: '📁' },
-    { label: 'Grounding', icon: '⚖️' },
-    { label: 'Sandbox', icon: '🛡️' },
-    { label: 'No-Code', icon: '⚡' },
-    { label: 'Offline', icon: '🌐' },
+    { label: 'Privacy', icon: '🔒', color: '#10B981' },
+    { label: 'Formats', icon: '📁', color: '#38BDF8' },
+    { label: 'Grounding', icon: '⚖️', color: '#F97316' },
+    { label: 'Sandbox', icon: '🛡️', color: '#7F77DD' },
+    { label: 'No-Code', icon: '⚡', color: '#EAB308' },
+    { label: 'Offline', icon: '🌐', color: '#06B6D4' },
   ]
 
   return (
-    <div className="arg-mobile-faq">
-      <div className="mobile-faq-tabs">
-        {categories.map((c, idx) => (
-          <button
-            key={c.label}
-            className={`mobile-faq-tab ${activeFaq === idx ? 'active' : ''}`}
-            onClick={() => setActiveFaq(idx)}
-          >
-            <span>{c.icon} {c.label}</span>
-          </button>
-        ))}
+    <div className="arg-mobile-faq-accordion">
+      <div className="faq-accordion-list">
+        {faqs.map((faq, idx) => {
+          const isOpen = openIndex === idx
+          const cat = categories[idx] || { label: 'Intel', icon: '✦', color: '#F97316' }
+          return (
+            <div
+              key={idx}
+              className={`faq-accordion-item ${isOpen ? 'is-open' : ''}`}
+              style={{ '--cat-color': cat.color }}
+            >
+              <button
+                type="button"
+                className="faq-accordion-header"
+                onClick={() => toggleIndex(idx)}
+                aria-expanded={isOpen}
+              >
+                <div className="faq-header-left">
+                  <span className="faq-cat-badge">
+                    {cat.icon} {cat.label}
+                  </span>
+                  <h4 className="faq-question-title">{faq[0]}</h4>
+                </div>
+                <div className={`faq-chevron-wrap ${isOpen ? 'rotate' : ''}`}>
+                  <ChevronDown size={16} />
+                </div>
+              </button>
+
+              {isOpen && (
+                <div className="faq-accordion-drawer">
+                  <div className="faq-drawer-content">
+                    <p className="faq-answer-text">{faq[1]}</p>
+                    <div className="faq-drawer-badge">
+                      <span className="badge-dot" style={{ background: cat.color }} />
+                      <span>100% In-Memory Python Engine · Zero Cloud Retention</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
 
-      <div className="mobile-faq-spotlight-card">
-        <div className="faq-spotlight-head">
-          <span className="faq-num">QUESTION {activeFaq + 1} OF {faqs.length}</span>
-          <span className="faq-topic">{categories[activeFaq]?.label?.toUpperCase()} INTEL</span>
-        </div>
-        <h4 className="faq-spotlight-q">{current[0]}</h4>
-        <p className="faq-spotlight-a">{current[1]}</p>
-        <div className="faq-spotlight-badge">
-          <span className="badge-dot" />
-          <span>100% In-Memory Python Engine</span>
-        </div>
-      </div>
-
-      <div className="mobile-faq-controls">
-        <div className="faq-nav-btns">
-          <button
-            disabled={activeFaq === 0}
-            onClick={() => setActiveFaq((p) => Math.max(0, p - 1))}
-            className="faq-nav-btn"
-          >
-            &larr; Prev
-          </button>
-          <div className="faq-dots">
-            {faqs.map((_, i) => (
-              <span
-                key={i}
-                className={`f-dot ${i === activeFaq ? 'active' : ''}`}
-                onClick={() => setActiveFaq(i)}
-              />
-            ))}
-          </div>
-          <button
-            disabled={activeFaq === faqs.length - 1}
-            onClick={() => setActiveFaq((p) => Math.min(faqs.length - 1, p + 1))}
-            className="faq-nav-btn"
-          >
-            Next &rarr;
-          </button>
-        </div>
-        <button className="mobile-scroll-hint" onClick={onNext}>
+      <div className="mobile-faq-accordion-footer">
+        <button type="button" className="mobile-scroll-hint" onClick={onNext}>
           <span>✦ Launch Argus Studio</span>
           <ChevronDown size={13} className="bounce-arrow" />
         </button>
@@ -403,8 +411,8 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
   const scrollRef = useRef(null)
   const activeRef = useRef(0)
   const [activePhaseIdx, setActivePhaseIdx] = useState(0)
-  const typed = useTypewriter(TYPED)
-  const [openFaq, setOpenFaq] = useState(0)
+  const typed = useTypewriter(TYPED, activePhaseIdx === 0)
+  const [openFaq, setOpenFaq] = useState(-1)
   const [navOpen, setNavOpen] = useState(false)
   const isMobile = useMediaQuery('(max-width: 768px)')
   const [statsRef, statsShown] = useReveal({ threshold: 0.35 })
@@ -426,15 +434,16 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
   const closeNav = () => setNavOpen(false)
   useScrollLock(navOpen)
 
-  // Smooth phase jumping
+  const AUTO_HIDE_DELAY_MS = 1000
+
   // Smooth phase jumping
   const goToPhase = (id) => {
     const root = scrollRef.current
     const target = root?.querySelector(`#${id}`)
     if (!root || !target) return
     const isFirstPage = id === 'top'
-    // Permanent visible on first page; 2s auto-hide on all other sections
-    showTaskbar(isFirstPage ? 0 : 2000)
+    // Permanent visible on first page top; 1s auto-hide on all other sections
+    showTaskbar(isFirstPage ? 0 : AUTO_HIDE_DELAY_MS)
     target.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -464,8 +473,13 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
       clearTimeout(taskbarHideTimerRef.current)
       taskbarHideTimerRef.current = null
     }
-    // Never hide taskbar on the very first page
-    if (activeRef.current === 0) {
+    // Never hide taskbar while navigation drawer is open
+    if (navOpen) {
+      return
+    }
+    // Never hide taskbar when resting at the very top of the first page
+    const isAtTop = scrollRef.current ? scrollRef.current.scrollTop < 20 : activeRef.current === 0
+    if (activeRef.current === 0 && isAtTop) {
       return
     }
     if (taskbarVisibleRef.current) {
@@ -483,13 +497,13 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
   }, [])
 
   // 2. When active section changes:
-  // On very first page: never hide. On all other sections: visible for 2s then hides
+  // On very first page: keep visible. On all other sections: visible for 1s then hides smoothly
   useEffect(() => {
-    const isFirstPage = activePhaseIdx === 0
-    showTaskbar(isFirstPage ? 0 : 2000)
+    const isFirstPage = activePhaseIdx === 0 && (!scrollRef.current || scrollRef.current.scrollTop < 20)
+    showTaskbar(isFirstPage ? 0 : AUTO_HIDE_DELAY_MS)
   }, [activePhaseIdx])
 
-  // 3. User interaction & mobile touch: reveal on movement/scroll, auto-hide after 2s on other sections
+  // 3. User interaction & mobile touch: reveal on movement/scroll, auto-hide after 1s on other sections
   useEffect(() => {
     const root = scrollRef.current
     if (!root) return undefined
@@ -505,28 +519,28 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
       if (Math.abs(scrollDiff) < 6) return
 
       lastScrollTop = currentScroll
-      const isFirstPage = activeRef.current === 0
+      const isFirstPage = activeRef.current === 0 && root.scrollTop < 20
 
-      // When moving/scrolling pages: taskbar appears immediately, and will hide after 2s (never on first page)
-      showTaskbar(isFirstPage ? 0 : 2000)
+      // When moving/scrolling pages: taskbar appears immediately, and will hide after 1s (never on first page top)
+      showTaskbar(isFirstPage ? 0 : AUTO_HIDE_DELAY_MS)
     }
 
     const handleTouchStart = (e) => {
       touchStartY = e.touches[0].clientY
-      const isFirstPage = activeRef.current === 0
-      showTaskbar(isFirstPage ? 0 : 2000)
+      const isFirstPage = activeRef.current === 0 && (!root || root.scrollTop < 20)
+      showTaskbar(isFirstPage ? 0 : AUTO_HIDE_DELAY_MS)
     }
 
     const handleTouchMove = () => {
-      const isFirstPage = activeRef.current === 0
-      showTaskbar(isFirstPage ? 0 : 2000)
+      const isFirstPage = activeRef.current === 0 && (!root || root.scrollTop < 20)
+      showTaskbar(isFirstPage ? 0 : AUTO_HIDE_DELAY_MS)
     }
 
     const handlePointerTop = (e) => {
       const y = e.touches ? e.touches[0].clientY : e.clientY
       if (y <= 55) {
-        const isFirstPage = activeRef.current === 0
-        showTaskbar(isFirstPage ? 0 : 2000)
+        const isFirstPage = activeRef.current === 0 && (!root || root.scrollTop < 20)
+        showTaskbar(isFirstPage ? 0 : AUTO_HIDE_DELAY_MS)
       }
     }
 
@@ -624,6 +638,9 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
     ['<3s', 'Profile runtime'],
   ]
 
+  // "Try Argus" floating corner CTA only appears in 1st, 3rd, and 4th page sections (0-indexed: 0, 2, 3)
+  const showCornerCta = [0, 2, 3].includes(activePhaseIdx)
+
   return (
     <div className="arg-landing landing-scroll" ref={scrollRef}>
       {/* Top scroll-progress hairline (Samvaad pattern, ref-painted) */}
@@ -636,11 +653,11 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
         className={`arg-nav ${!taskbarVisible ? 'is-taskbar-hidden' : ''}`}
         onClick={() => {
           if (!taskbarVisible) {
-            showTaskbar(activeRef.current === 0 ? 0 : 2000)
+            showTaskbar(activeRef.current === 0 && (!scrollRef.current || scrollRef.current.scrollTop < 20) ? 0 : AUTO_HIDE_DELAY_MS)
           }
         }}
         onMouseEnter={() => showTaskbar(0)}
-        onMouseLeave={() => showTaskbar(activeRef.current === 0 ? 0 : 2000)}
+        onMouseLeave={() => showTaskbar(activeRef.current === 0 && (!scrollRef.current || scrollRef.current.scrollTop < 20) ? 0 : AUTO_HIDE_DELAY_MS)}
       >
         <a className="arg-nav-brand" href="#top" onClick={(e) => { e.preventDefault(); goToPhase('top'); closeNav(); }}>
           <Logo />
@@ -649,6 +666,21 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
             <span className="arg-nav-tagline">Automated EDA</span>
           </div>
         </a>
+
+        {/* Dynamic Current Page Name Indicator (Samvaad ergonomics) */}
+        <div
+          className="arg-nav-mobile-page-pill"
+          aria-live="polite"
+          onClick={(e) => {
+            e.stopPropagation()
+            goToPhase(activePhases[activePhaseIdx]?.id || 'top')
+          }}
+        >
+          <span className="mobile-page-dot" />
+          <span className="mobile-page-name">
+            {activePhases[activePhaseIdx]?.label || 'Home'}
+          </span>
+        </div>
 
         {/* Desktop Navigation Links (Clean 4-Pillar Ergonomics) */}
         <div className="arg-nav-desktop-center">
@@ -694,7 +726,13 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
             className="arg-nav-toggle"
             aria-label={navOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={navOpen}
-            onClick={() => setNavOpen((open) => !open)}
+            onClick={() => {
+              setNavOpen((open) => {
+                const next = !open
+                if (next) showTaskbar(0)
+                return next
+              })
+            }}
           >
             {navOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -1172,6 +1210,22 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
           </section>
         </>
       )}
+
+      {/* ── Samvaad-Style Floating Corner Action Button (Try Argus) ──── */}
+      <button
+        type="button"
+        className={`arg-floating-corner-cta ${showCornerCta ? 'is-visible' : 'is-hidden'}`}
+        onClick={onDemo}
+        aria-label="Try Argus - Understand your data"
+      >
+        <div className="corner-cta-icon-box" aria-hidden="true">
+          <span className="corner-cta-emoji">🪷</span>
+        </div>
+        <div className="corner-cta-text">
+          <span className="corner-cta-title">Try Argus</span>
+          <span className="corner-cta-sub">Understand your data &rarr;</span>
+        </div>
+      </button>
     </div>
   )
 }

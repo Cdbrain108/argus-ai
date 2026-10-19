@@ -126,13 +126,42 @@ const BEGINNER_TERMS = {
 }
 
 function App() {
+  // Always reset to the landing page on reload
   const [view, setView] = useState('landing')
-  const [page, setPage] = useState('analyst')
-  const [dataset, setDataset] = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [preview, setPreview] = useState(null)
+  const [page, setPage] = useState('dataset')
+  const [dataset, setDataset] = useState(() => {
+    try {
+      const d = localStorage.getItem('argus-active-dataset')
+      return d ? JSON.parse(d) : null
+    } catch {
+      return null
+    }
+  })
+  const [profile, setProfile] = useState(() => {
+    try {
+      const p = localStorage.getItem('argus-active-profile')
+      return p ? JSON.parse(p) : null
+    } catch {
+      return null
+    }
+  })
+  const [preview, setPreview] = useState(() => {
+    try {
+      const p = localStorage.getItem('argus-active-preview')
+      return p ? JSON.parse(p) : null
+    } catch {
+      return null
+    }
+  })
   const [sessionId, setSessionId] = useState(() => localStorage.getItem('argus-session') || '')
-  const [messages, setMessages] = useState([])
+  const [messages, setMessages] = useState(() => {
+    try {
+      const m = localStorage.getItem('argus-active-messages')
+      return m ? JSON.parse(m) : []
+    } catch {
+      return []
+    }
+  })
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -155,9 +184,64 @@ function App() {
   const [ratingModalOpen, setRatingModalOpen] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [uploadModalForNewChat, setUploadModalForNewChat] = useState(false)
-  const [showIntro, setShowIntro] = useState(true)
+  // Intro animation plays only ONCE per browser session so app-switching never replays it
+  const [showIntro, setShowIntro] = useState(() => {
+    try {
+      return !sessionStorage.getItem('argus-intro-seen')
+    } catch {
+      return false
+    }
+  })
   const [datasetLoading, setDatasetLoading] = useState(null)
   const datasetPrefetchedIdRef = useRef(null)
+
+  // Ensure browser reload always resets cleanly to the landing page
+  useEffect(() => {
+    try {
+      localStorage.removeItem('argus-active-view')
+      localStorage.removeItem('argus-active-page')
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    try {
+      if (dataset) {
+        localStorage.setItem('argus-active-dataset', JSON.stringify(dataset))
+      } else {
+        localStorage.removeItem('argus-active-dataset')
+      }
+    } catch {}
+  }, [dataset])
+
+  useEffect(() => {
+    try {
+      if (profile) {
+        localStorage.setItem('argus-active-profile', JSON.stringify(profile))
+      } else {
+        localStorage.removeItem('argus-active-profile')
+      }
+    } catch {}
+  }, [profile])
+
+  useEffect(() => {
+    try {
+      if (preview) {
+        localStorage.setItem('argus-active-preview', JSON.stringify(preview))
+      } else {
+        localStorage.removeItem('argus-active-preview')
+      }
+    } catch {}
+  }, [preview])
+
+  useEffect(() => {
+    try {
+      if (messages && messages.length > 0) {
+        localStorage.setItem('argus-active-messages', JSON.stringify(messages))
+      } else {
+        localStorage.removeItem('argus-active-messages')
+      }
+    } catch {}
+  }, [messages])
 
   // Validate session on mount & subscribe to Firebase auth
   useEffect(() => {
@@ -500,6 +584,17 @@ function App() {
           .catch(() => {})
       }
 
+      // If dataset was transformed, mutated, or cleaned, refresh workspace session!
+      const dsUpdate = response.dataset_update || response.analysis?.dataset_update
+      if (dsUpdate) {
+        const activeDsId = response.dataset_id || dataset?.dataset_id
+        if (activeDsId) {
+          api.getDataset(activeDsId).then(setProfile).catch(() => {})
+          api.getPreview(activeDsId).then(setPreview).catch(() => {})
+          setToast?.(`Dataset updated: ${dsUpdate.rows} rows × ${dsUpdate.columns?.length || 0} cols`)
+        }
+      }
+
       const reply = response.reply || response.analysis?.explanation || 'Analysis completed.'
       const steps = response.status_steps || [
         'Understanding your question',
@@ -594,7 +689,16 @@ function App() {
 
   return (
     <>
-      {showIntro && <ArgusLogoIntro onComplete={() => setShowIntro(false)} />}
+      {showIntro && (
+        <ArgusLogoIntro
+          onComplete={() => {
+            try {
+              sessionStorage.setItem('argus-intro-seen', 'true')
+            } catch {}
+            setShowIntro(false)
+          }}
+        />
+      )}
       <input ref={fileInputRef} type="file" accept={ACCEPTED_UPLOADS} onChange={handleUpload} hidden />
       {view === 'landing' ? (
         <Landing
@@ -765,6 +869,17 @@ function Workspace(props) {
     onHome,
     onDemo,
   } = props
+
+  const [visitedPages, setVisitedPages] = useState(() => new Set(['analyst', page || 'dataset']))
+
+  useEffect(() => {
+    setVisitedPages((prev) => {
+      if (prev.has(page)) return prev
+      const next = new Set(prev)
+      next.add(page)
+      return next
+    })
+  }, [page])
 
   // sidebarOpen controls whether the left sidebar is open or closed.
   // When sidebarOpen is true:
@@ -1030,9 +1145,31 @@ function Workspace(props) {
               <span>
                 {dataset.rows?.toLocaleString()} rows · {dataset.columns} columns
               </span>
+              <button
+                type="button"
+                className="sidebar-switch-dataset-btn"
+                onClick={() => {
+                  if (isMobileScreen) setSidebarOpen(false)
+                  onUpload?.()
+                }}
+                title="Switch to another practice dataset or upload a new file"
+              >
+                <RefreshCw size={12} />
+                <span>Switch / Upload Dataset</span>
+              </button>
             </>
           ) : (
-            <span className="muted">Upload a dataset to begin</span>
+            <button
+              type="button"
+              className="sidebar-switch-dataset-btn primary"
+              onClick={() => {
+                if (isMobileScreen) setSidebarOpen(false)
+                onUpload?.()
+              }}
+            >
+              <Upload size={12} />
+              <span>Choose or Upload Dataset</span>
+            </button>
           )}
         </div>
 
@@ -1094,10 +1231,16 @@ function Workspace(props) {
             <button className="mobile-brand" onClick={onHome}>
               <ArrowLeft size={17} /> ARGUS
             </button>
-            <div className="topbar-status">
+            <button
+              type="button"
+              className="topbar-status clickable-dataset-pill"
+              onClick={onUpload}
+              title="Click to switch or upload a new dataset"
+            >
               <span className="status-dot" />
-              {dataset ? `Workspace ready · ${dataset.filename}` : 'No dataset loaded'}
-            </div>
+              <span>{dataset ? `Workspace ready · ${dataset.filename}` : 'No dataset loaded'}</span>
+              <ChevronDown size={12} className="pill-dropdown-icon" />
+            </button>
           </div>
 
           {/* Topbar Quick Navigation Buttons */}
@@ -1177,9 +1320,11 @@ function Workspace(props) {
           </div>
         )}
 
-        <div className="content">
-          <div className={`workspace-page workspace-page-${page}`}>
-          {page === 'analyst' && (
+        <div className={`content content-${page}`}>
+          <div
+            className="workspace-page workspace-page-analyst"
+            style={{ display: page === 'analyst' ? undefined : 'none' }}
+          >
             <AnalystPage
               dataset={dataset}
               profile={profile}
@@ -1201,58 +1346,87 @@ function Workspace(props) {
               isFullscreen={isFullscreen}
               toggleFullscreen={toggleFullscreen}
             />
-          )}
-          {page === 'dataset' && (
-            <DatasetPage
-              dataset={dataset}
-              profile={profile}
-              preview={preview}
-              narrative={narrative}
-              narrativeBusy={narrativeBusy}
-              onUpload={onUpload}
-              onDemo={onDemo}
-            />
-          )}
-          {page === 'explore' && (
-            <ExplorePage
-              dataset={dataset}
-              profile={profile}
-              setAnalysis={setAnalysis}
-              busy={busy}
-              setBusy={setBusy}
-              setError={setError}
-              onUpload={onUpload}
-              onDemo={onDemo}
-              beginnerMode={beginnerMode}
-              setPage={setPage}
-              sendMessage={sendMessage}
-              triggerReportGeneration={triggerReportGeneration}
-            />
-          )}
-          {page === 'cleaning' && (
-            <CleaningPage
-              dataset={dataset}
-              setError={setError}
-              setToast={setToast}
-              onUpload={onUpload}
-              onDemo={onDemo}
-            />
-          )}
-          {page === 'features' && (
-            <FeaturesPage dataset={dataset} setError={setError} onUpload={onUpload} onDemo={onDemo} />
-          )}
-          {page === 'reports' && (
-            <ReportsPage
-              dataset={dataset}
-              reports={reports}
-              setReports={setReports}
-              triggerReportGeneration={triggerReportGeneration}
-              busy={busy}
-              setError={setError}
-              onUpload={onUpload}
-              onDemo={onDemo}
-            />
-          )}
+          </div>
+
+          <div
+            className="workspace-page workspace-page-dataset"
+            style={{ display: page === 'dataset' ? undefined : 'none' }}
+          >
+            {visitedPages.has('dataset') && (
+              <DatasetPage
+                dataset={dataset}
+                profile={profile}
+                preview={preview}
+                narrative={narrative}
+                narrativeBusy={narrativeBusy}
+                onUpload={onUpload}
+                onDemo={onDemo}
+              />
+            )}
+          </div>
+
+          <div
+            className="workspace-page workspace-page-explore"
+            style={{ display: page === 'explore' ? undefined : 'none' }}
+          >
+            {visitedPages.has('explore') && (
+              <ExplorePage
+                dataset={dataset}
+                profile={profile}
+                setAnalysis={setAnalysis}
+                busy={busy}
+                setBusy={setBusy}
+                setError={setError}
+                onUpload={onUpload}
+                onDemo={onDemo}
+                beginnerMode={beginnerMode}
+                setPage={setPage}
+                sendMessage={sendMessage}
+                triggerReportGeneration={triggerReportGeneration}
+              />
+            )}
+          </div>
+
+          <div
+            className="workspace-page workspace-page-cleaning"
+            style={{ display: page === 'cleaning' ? undefined : 'none' }}
+          >
+            {visitedPages.has('cleaning') && (
+              <CleaningPage
+                dataset={dataset}
+                setError={setError}
+                setToast={setToast}
+                onUpload={onUpload}
+                onDemo={onDemo}
+              />
+            )}
+          </div>
+
+          <div
+            className="workspace-page workspace-page-features"
+            style={{ display: page === 'features' ? undefined : 'none' }}
+          >
+            {visitedPages.has('features') && (
+              <FeaturesPage dataset={dataset} setError={setError} onUpload={onUpload} onDemo={onDemo} />
+            )}
+          </div>
+
+          <div
+            className="workspace-page workspace-page-reports"
+            style={{ display: page === 'reports' ? undefined : 'none' }}
+          >
+            {visitedPages.has('reports') && (
+              <ReportsPage
+                dataset={dataset}
+                reports={reports}
+                setReports={setReports}
+                triggerReportGeneration={triggerReportGeneration}
+                busy={busy}
+                setError={setError}
+                onUpload={onUpload}
+                onDemo={onDemo}
+              />
+            )}
           </div>
         </div>
       </main>
@@ -1454,19 +1628,25 @@ function renderFormattedMessage(text) {
 
 function ReasoningProgressTicker() {
   const [stage, setStage] = useState(0)
+  const [elapsed, setElapsed] = useState('0.1')
 
   const stages = [
-    { text: 'Parsing query intent & isolating target data fields...', icon: BrainCircuit, color: '#38BDF8' },
-    { text: 'AST verification: local sandbox verified safe (0 unsafe calls)...', icon: ShieldCheck, color: '#1D9E75' },
-    { text: 'Executing verified Python calculations (pandas, SciPy, sklearn)...', icon: Terminal, color: '#EF9F27' },
-    { text: 'Grounding insights & formulating mathematical explanation...', icon: Sparkles, color: '#7F77DD' },
+    { text: 'Parsing query intent & isolating target data fields...', icon: BrainCircuit, color: '#38BDF8', label: 'Intent Routing' },
+    { text: 'AST verification: local sandbox verified safe (0 unsafe calls)...', icon: ShieldCheck, color: '#10B981', label: 'AST Safe Sandbox' },
+    { text: 'Executing verified Python calculations (pandas, SciPy, sklearn)...', icon: Terminal, color: '#F97316', label: 'Python Sandbox' },
+    { text: 'Grounding insights & formulating mathematical explanation...', icon: Sparkles, color: '#A855F7', label: 'Synthesis' },
   ]
 
   useEffect(() => {
-    const t1 = setTimeout(() => setStage(1), 700)
-    const t2 = setTimeout(() => setStage(2), 1600)
-    const t3 = setTimeout(() => setStage(3), 2800)
+    const start = Date.now()
+    const timer = setInterval(() => {
+      setElapsed(((Date.now() - start) / 1000).toFixed(1))
+    }, 100)
+    const t1 = setTimeout(() => setStage(1), 600)
+    const t2 = setTimeout(() => setStage(2), 1500)
+    const t3 = setTimeout(() => setStage(3), 2600)
     return () => {
+      clearInterval(timer)
       clearTimeout(t1)
       clearTimeout(t2)
       clearTimeout(t3)
@@ -1484,13 +1664,15 @@ function ReasoningProgressTicker() {
           <span className="thinking-pulse-dot" />
           <Icon size={14} style={{ color: current.color }} />
           <span className="thinking-text">{current.text}</span>
-          <LoaderCircle size={14} className="spin" style={{ marginLeft: 'auto', color: current.color }} />
+          <span className="thinking-elapsed-badge">{elapsed}s</span>
+          <LoaderCircle size={14} className="spin" style={{ marginLeft: '4px', color: current.color }} />
         </div>
         <div className="thinking-progress-pills">
           {stages.map((s, idx) => (
             <span
               key={idx}
               className={`stage-pill ${idx === stage ? 'active' : idx < stage ? 'done' : 'pending'}`}
+              title={s.label}
             >
               {idx < stage ? '✓' : idx + 1}
             </span>
@@ -1503,6 +1685,12 @@ function ReasoningProgressTicker() {
 
 function VerboseExecutionDropdown({ steps, trace, defaultExpanded = true }) {
   const [open, setOpen] = useState(defaultExpanded)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    setOpen(defaultExpanded)
+  }, [defaultExpanded])
+
   if (!steps || steps.length === 0) return null
 
   const stepCount = steps.length
@@ -1512,6 +1700,14 @@ function VerboseExecutionDropdown({ steps, trace, defaultExpanded = true }) {
   const code = trace?.code
   const columns = trace?.columns
   const retries = trace?.retries || 0
+
+  const handleCopyCode = (e) => {
+    e.stopPropagation()
+    if (!code) return
+    navigator.clipboard?.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div className={`verbose-dropdown ${open ? 'expanded' : 'collapsed'}`}>
@@ -1529,6 +1725,11 @@ function VerboseExecutionDropdown({ steps, trace, defaultExpanded = true }) {
           <span className="verbose-tag">LangGraph</span>
         </div>
         <div className="verbose-toggle-right">
+          {!open && code && (
+            <span className="verbose-compact-hint">
+              <Terminal size={11} /> Python Sandbox
+            </span>
+          )}
           <span className="verbose-toggle-hint">{open ? 'Hide details' : 'View working'}</span>
           {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </div>
@@ -1569,7 +1770,7 @@ function VerboseExecutionDropdown({ steps, trace, defaultExpanded = true }) {
               )}
               <div className="verbose-meta-card">
                 <span className="meta-label">AGENT ENGINE</span>
-                <span className="meta-value">LangGraph v0.2 · Safe Sandbox</span>
+                <span className="meta-value">LangGraph Safe Python Sandbox</span>
               </div>
             </div>
           )}
@@ -1581,7 +1782,17 @@ function VerboseExecutionDropdown({ steps, trace, defaultExpanded = true }) {
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                   <Terminal size={12} /> Executed Python Sandbox Code
                 </span>
-                {retries > 0 && <span className="verbose-retry-badge">Self-corrected ({retries} retry)</span>}
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  {retries > 0 && <span className="verbose-retry-badge">Self-corrected ({retries} retry)</span>}
+                  <button
+                    type="button"
+                    className="verbose-copy-code-btn"
+                    onClick={handleCopyCode}
+                    title="Copy Python code"
+                  >
+                    {copied ? 'Copied!' : 'Copy Code'}
+                  </button>
+                </div>
               </div>
               <pre className="verbose-code-pre">
                 <code>{code.trim()}</code>
@@ -1623,12 +1834,22 @@ function AnalystPage(props) {
   const [localDraft, setLocalDraft] = useState(draft || '')
   const isMobileScreen = useMediaQuery('(max-width: 860px)')
   const [mobileTab, setMobileTab] = useState('chat') // 'chat' | 'schema'
+  const textareaRef = useRef(null)
 
   useEffect(() => {
     if (draft && draft !== localDraft) {
       setLocalDraft(draft)
     }
   }, [draft])
+
+  useEffect(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+    textarea.style.height = '0px'
+    const scrollH = textarea.scrollHeight
+    const nextHeight = Math.min(Math.max(scrollH, 38), 120)
+    textarea.style.height = `${nextHeight}px`
+  }, [localDraft])
 
   const handleSend = (text) => {
     const query = (typeof text === 'string' ? text : localDraft).trim()
@@ -1743,17 +1964,17 @@ function AnalystPage(props) {
         </div>
       </div>
 
-      {isMobileScreen && (
-        <MobileAnalystSwitcher
-          activeTab={mobileTab}
-          onChange={setMobileTab}
-          columnCount={columnsList.length}
-        />
-      )}
+      <MobileAnalystSwitcher
+        activeTab={mobileTab}
+        onChange={setMobileTab}
+        columnCount={columnsList.length}
+        verboseMode={verboseMode}
+        onToggleVerbose={() => setVerboseMode?.((v) => !v)}
+      />
 
-      <div className={`chat-layout ${isMobileScreen ? `mobile-tab-${mobileTab}` : ''}`}>
+      <div className={`chat-layout mobile-tab-${mobileTab}`}>
         {/* Center Conversational Workspace */}
-        {(!isMobileScreen || mobileTab === 'chat') && (
+        {mobileTab === 'chat' && (
           <div className="chat-panel">
             <div className="chat-messages">
             {messages.length === 0 && (
@@ -1842,9 +2063,10 @@ function AnalystPage(props) {
           {/* Composer */}
           <form className="composer" onSubmit={(e) => { e.preventDefault(); handleSend(localDraft) }}>
             <textarea
+              ref={textareaRef}
               value={localDraft}
               onChange={(e) => setLocalDraft(e.target.value)}
-              placeholder="Ask ARGUS about your data (e.g., 'Is there a relationship between age and fare?')..."
+              placeholder="Ask anything about your data..."
               rows="1"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -2192,6 +2414,86 @@ function AnalysisResultCard({
       </div>
 
       <AiNarrative payload={result.chart_narrative} label="WHAT THIS GRAPH SHOWS" compact tight />
+
+      {/* Resultant Transformed Dataset Banner */}
+      {result.dataset_update && (
+        <div
+          className="dataset-update-card"
+          style={{
+            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(56, 189, 248, 0.08))',
+            border: '1px solid rgba(16, 185, 129, 0.35)',
+            borderRadius: 10,
+            padding: '14px 16px',
+            marginTop: 14,
+            marginBottom: 10,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.6px', color: '#10b981', fontWeight: 700 }}>
+                  ✨ RESULTANT DATASET READY
+                </span>
+                <span style={{
+                  background: 'rgba(16, 185, 129, 0.2)',
+                  color: '#34d399',
+                  fontSize: '0.75rem',
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  fontFamily: 'monospace',
+                  fontWeight: 600,
+                }}>
+                  {result.dataset_update.rows?.toLocaleString()} rows × {result.dataset_update.columns?.length || 0} cols
+                </span>
+                {result.dataset_update.row_delta !== undefined && result.dataset_update.row_delta !== 0 && (
+                  <span style={{
+                    background: result.dataset_update.row_delta > 0 ? 'rgba(56, 189, 248, 0.2)' : 'rgba(244, 63, 94, 0.2)',
+                    color: result.dataset_update.row_delta > 0 ? '#38bdf8' : '#f43f5e',
+                    fontSize: '0.75rem',
+                    padding: '2px 8px',
+                    borderRadius: 12,
+                    fontFamily: 'monospace',
+                  }}>
+                    {result.dataset_update.row_delta > 0 ? `+${result.dataset_update.row_delta}` : result.dataset_update.row_delta} rows
+                  </span>
+                )}
+              </div>
+              <p style={{ margin: '6px 0 0', fontSize: '0.82rem', color: '#cbd5e1' }}>
+                Your dataset was transformed in-session. The workspace has been synchronized and is ready for further analysis.
+              </p>
+              {result.dataset_update.new_columns?.length > 0 && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>New fields:</span>
+                  {result.dataset_update.new_columns.map((nc) => (
+                    <span key={nc} style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '1px 6px', borderRadius: 4, fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                      +{nc}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <a
+              href={result.dataset_update.download_url || `/api/datasets/${result.dataset_id || ''}/export`}
+              download
+              className="action-pill-btn"
+              style={{
+                background: '#10b981',
+                color: '#042f2e',
+                fontWeight: 700,
+                border: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 14px',
+                borderRadius: 8,
+                textDecoration: 'none',
+              }}
+            >
+              <Download size={14} /> Download Resultant CSV
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Numerical Stats Badges */}
       {statEntries.length > 0 && (

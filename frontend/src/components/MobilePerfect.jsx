@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useReveal } from '../hooks'
 import {
   Activity,
   ArrowRight,
@@ -220,6 +221,7 @@ export function MobileWorkspaceEmpty({
 
 /* 4-Stage Interactive Pipeline Card Stepper built specifically for mobile screens */
 export function MobilePipelineStepper({ onDemo, onEnter }) {
+  const [ref, inView] = useReveal({ threshold: 0.15, once: false })
   const [activeStage, setActiveStage] = useState(0)
 
   const stages = [
@@ -265,19 +267,27 @@ export function MobilePipelineStepper({ onDemo, onEnter }) {
     },
   ]
 
-  // Auto-advance stages smoothly with reset on manual click
+  // Reset to first stage (01 Sniff) every time this section is landed / scrolled into view
   useEffect(() => {
+    if (inView) {
+      setActiveStage(0)
+    }
+  }, [inView])
+
+  // Auto-advance stages smoothly ONLY when visible on screen
+  useEffect(() => {
+    if (!inView) return undefined
     const timer = setTimeout(() => {
       setActiveStage((prev) => (prev + 1) % stages.length)
     }, 3800)
     return () => clearTimeout(timer)
-  }, [activeStage])
+  }, [activeStage, inView, stages.length])
 
   const current = stages[activeStage]
   const Icon = current.icon
 
   return (
-    <div className="mp-pipeline-container">
+    <div className="mp-pipeline-container" ref={ref}>
       {/* Horizontal Step Indicator Pills */}
       <div className="mp-pipeline-pills" role="tablist">
         {stages.map((st, idx) => (
@@ -318,7 +328,11 @@ export function MobilePipelineStepper({ onDemo, onEnter }) {
 
         <div className="mp-stage-receipt">
           <span className="receipt-dot" />
-          <code>{current.receipt}</code>
+          <div className="mp-receipt-lines">
+            {current.receipt.split(' · ').map((line, lIdx) => (
+              <code key={lIdx} className="mp-receipt-line">{line}</code>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -350,14 +364,23 @@ export function MobilePipelineStepper({ onDemo, onEnter }) {
 
 /* Mobile-first interactive chart switcher (Histogram, Correlation, Outliers, AI Summary) */
 export function MobileChartShowcase({ onDemo, onEnter }) {
+  const [ref, inView] = useReveal({ threshold: 0.15, once: false })
   const [activeTab, setActiveTab] = useState(0)
 
+  // Reset to first tab (0: Distribution) whenever landed on this section
   useEffect(() => {
+    if (inView) {
+      setActiveTab(0)
+    }
+  }, [inView])
+
+  useEffect(() => {
+    if (!inView) return undefined
     const timer = setTimeout(() => {
       setActiveTab((prev) => (prev + 1) % 4)
     }, 3800)
     return () => clearTimeout(timer)
-  }, [activeTab])
+  }, [activeTab, inView])
 
   const items = [
     {
@@ -421,7 +444,7 @@ export function MobileChartShowcase({ onDemo, onEnter }) {
   const current = items[activeTab]
 
   return (
-    <div className="mp-showcase-container">
+    <div className="mp-showcase-container" ref={ref}>
       {/* Tab Switcher */}
       <div className="mp-showcase-tabs" role="tablist">
         {items.map((it, idx) => (
@@ -472,31 +495,45 @@ export function MobileChartShowcase({ onDemo, onEnter }) {
   )
 }
 
-/* Mobile-first tab switcher for the AI Analyst page between Chat and Schema Data Fields */
-export function MobileAnalystSwitcher({ activeTab, onChange, columnCount = 0 }) {
+/* Mobile-first unified top bar for the AI Analyst page */
+export function MobileAnalystSwitcher({ activeTab, onChange, columnCount = 0, verboseMode = false, onToggleVerbose }) {
   return (
     <div className="mp-analyst-switch" role="tablist" aria-label="AI Analyst Mobile View Switcher">
-      <button
-        type="button"
-        role="tab"
-        aria-selected={activeTab === 'chat'}
-        className={`mp-analyst-tab ${activeTab === 'chat' ? 'active' : ''}`}
-        onClick={() => onChange('chat')}
-      >
-        <Bot size={14} />
-        <span>AI Analyst Chat</span>
-      </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={activeTab === 'schema'}
-        className={`mp-analyst-tab ${activeTab === 'schema' ? 'active' : ''}`}
-        onClick={() => onChange('schema')}
-      >
-        <Database size={14} />
-        <span>Data Fields</span>
-        {columnCount > 0 && <span className="mp-analyst-badge">{columnCount}</span>}
-      </button>
+      <div className="mp-analyst-tabs-group">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'chat'}
+          className={`mp-analyst-tab ${activeTab === 'chat' ? 'active' : ''}`}
+          onClick={() => onChange('chat')}
+        >
+          <Bot size={14} />
+          <span>Chat</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'schema'}
+          className={`mp-analyst-tab ${activeTab === 'schema' ? 'active' : ''}`}
+          onClick={() => onChange('schema')}
+        >
+          <Database size={14} />
+          <span>Fields</span>
+          {columnCount > 0 && <span className="mp-analyst-badge">{columnCount}</span>}
+        </button>
+      </div>
+
+      {onToggleVerbose && (
+        <button
+          type="button"
+          className={`mp-verbose-pill ${verboseMode ? 'active' : ''}`}
+          onClick={onToggleVerbose}
+          title="Toggle Verbose LangGraph Agent Reasoning & Python Execution"
+        >
+          <BrainCircuit size={12} />
+          <span>Verbose: <strong>{verboseMode ? 'ON' : 'OFF'}</strong></span>
+        </button>
+      )}
     </div>
   )
 }

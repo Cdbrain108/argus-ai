@@ -215,6 +215,13 @@ export function useCountUp(display, active, { duration = 1100 } = {}) {
     target === null || prefersReducedMotion() ? target : 0
   ))
 
+  // Reset counter to 0 whenever landed / becoming active
+  useEffect(() => {
+    if (active && target !== null && !prefersReducedMotion()) {
+      setValue(0)
+    }
+  }, [active, target])
+
   useEffect(() => {
     if (target === null || !active || prefersReducedMotion()) return undefined
     let frame
@@ -305,13 +312,13 @@ export function useMountFlag(delay = 40) {
    900 renders instead of 150. One timeout per word (not an interval) means the
    pace is honoured even when the tab is throttled, and the whole thing
    short-circuits to the finished text under prefers-reduced-motion. */
-export function useTypedText(source, { delay = 18, chunkSize = 3, active = true } = {}) {
+export function useTypedText(source, { delay = 18, chunkSize = 3, active = true, ignoreReducedMotion = false } = {}) {
   const text = typeof source === 'string' ? source : ''
   const words = useMemo(() => (text ? text.split(/(\s+)/) : []), [text])
   // Whitespace is captured in the split so newlines survive; non-blank chunks
   // advance the counter in fast multi-word chunks.
   const total = words.length
-  const instant = !active || !text || prefersReducedMotion()
+  const instant = !active || !text || (!ignoreReducedMotion && prefersReducedMotion())
   const [count, setCount] = useState(() => (instant ? total : 0))
 
   useEffect(() => { setCount(instant ? total : 0) }, [text, instant, total])
@@ -334,5 +341,6 @@ export function useTypedText(source, { delay = 18, chunkSize = 3, active = true 
     text: count >= total ? text : words.slice(0, count).join(''),
     done: count >= total,
     skip: () => setCount(total),
+    replay: () => setCount(0),
   }
 }

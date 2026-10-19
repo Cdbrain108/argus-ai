@@ -155,10 +155,13 @@ export default function ProjectOverview({ onEnter, onDemo }) {
       ([entry]) => {
         if (entry.isIntersecting) {
           setInView(true)
+          setActiveTab(0)
           if (!introRunRef.current) {
             introRunRef.current = true
             setHasLandedIntro(true)
           }
+        } else {
+          setInView(false)
         }
       },
       { root: scrollRoot || null, threshold: 0.15 }
@@ -216,8 +219,9 @@ export default function ProjectOverview({ onEnter, onDemo }) {
 
       let charIdx = 0
       const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
-      const step = isMobile ? 6 : 5
-      const interval = 12
+      // Slower, smooth and deliberate executive typewriter speed
+      const step = isMobile ? 1 : 2
+      const interval = isMobile ? 22 : 18
 
       const timer = setInterval(() => {
         charIdx += step
@@ -251,7 +255,7 @@ export default function ProjectOverview({ onEnter, onDemo }) {
   // Animate response whenever in view and tab changes
   useEffect(() => {
     if (!inView) {
-      setTypedText(activeTopic.answer)
+      clearTimers()
       return undefined
     }
 

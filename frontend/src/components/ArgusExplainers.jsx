@@ -60,18 +60,25 @@ const STILL = () =>
    or backgrounded tab resumes on the step it was on instead of fast-forwarding
    through a queued backlog. `durations` lets one step hold longer than the rest
    (a typed sentence needs more time than a dot moving along an edge). */
-function useSequence(length, { interval = 3200, durations = null } = {}) {
+function useSequence(length, { interval = 3200, durations = null, active = true } = {}) {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
 
+  // Reset to first step whenever landed on / entered view
   useEffect(() => {
-    if (paused || length < 2) return undefined
+    if (active) {
+      setIndex(0)
+    }
+  }, [active])
+
+  useEffect(() => {
+    if (!active || paused || length < 2) return undefined
     const hold = Array.isArray(durations) ? (durations[index] ?? interval) : interval
     const timer = setTimeout(() => {
       setIndex((i) => (i + 1) % length)
     }, hold)
     return () => clearTimeout(timer)
-  }, [index, paused, length, interval, durations])
+  }, [index, active, paused, length, interval, durations])
 
   return { index, setIndex, setPaused, paused }
 }
@@ -287,19 +294,28 @@ const AGENT_PLAN_QUERIES = [
 ]
 
 function PlanMini() {
+  const [ref, inView] = useReveal({ threshold: 0.15, once: false })
   const [activeIdx, setActiveIdx] = useState(0)
 
+  // Reset to first query (0) whenever landed on this view
   useEffect(() => {
+    if (inView) {
+      setActiveIdx(0)
+    }
+  }, [inView])
+
+  useEffect(() => {
+    if (!inView) return undefined
     const timer = setInterval(() => {
       setActiveIdx((prev) => (prev + 1) % AGENT_PLAN_QUERIES.length)
     }, 4200)
     return () => clearInterval(timer)
-  }, [])
+  }, [inView])
 
   const current = AGENT_PLAN_QUERIES[activeIdx]
 
   return (
-    <div className="ax-mini ax-mini-agent-plan">
+    <div ref={ref} className="ax-mini ax-mini-agent-plan">
       {/* Dynamic User Query Prompt Box */}
       <div className="ax-agent-query-box">
         <div className="ax-agent-query-header">
@@ -423,9 +439,10 @@ const FLOW_MINIS = {
 }
 
 export function ArgusFlowMap() {
-  const ref = useRef(null)
+  const [ref, inView] = useReveal({ threshold: 0.15, once: false })
   const { index, setIndex, setPaused, paused } = useSequence(FLOW_STAGES.length, {
     interval: 3600,
+    active: inView,
   })
 
   const stage = FLOW_STAGES[index]
@@ -712,7 +729,7 @@ function graphPath(layout, key) {
 }
 
 export function AgentStateGraph() {
-  const ref = useRef(null)
+  const [ref, inView] = useReveal({ threshold: 0.15, once: false })
   const canvasRef = useRef(null)
   const { width } = useContainerQuery(canvasRef)
   const narrowViewport = useMediaQuery('(max-width: 860px)')
@@ -720,6 +737,7 @@ export function AgentStateGraph() {
   const layout = stacked ? GRAPH_LAYOUTS.column : GRAPH_LAYOUTS.row
   const { index, setIndex, setPaused, paused } = useSequence(GRAPH_TRACE.length, {
     interval: 3200,
+    active: inView,
   })
 
   const trace = GRAPH_TRACE[index]
@@ -872,9 +890,10 @@ const GATE_LINES = [
 ]
 
 export function SandboxGate() {
-  const ref = useRef(null)
+  const [ref, inView] = useReveal({ threshold: 0.15, once: false })
   const { index, setIndex, setPaused } = useSequence(GATE_LINES.length, {
     interval: 2600,
+    active: inView,
   })
 
   const line = GATE_LINES[index]
@@ -1189,9 +1208,10 @@ const CHART_KINDS = [
 ]
 
 export function ChartLab() {
-  const ref = useRef(null)
+  const [ref, inView] = useReveal({ threshold: 0.15, once: false })
   const { index, setIndex, setPaused } = useSequence(CHART_KINDS.length, {
     interval: 3400,
+    active: inView,
   })
 
   const kind = CHART_KINDS[index]
@@ -1366,9 +1386,10 @@ const PROOF_FIELDS = [
 ]
 
 export function GroundingProof() {
-  const ref = useRef(null)
+  const [ref, inView] = useReveal({ threshold: 0.15, once: false })
   const { index, setIndex, setPaused } = useSequence(PROOF_FIELDS.length, {
     interval: 2600,
+    active: inView,
   })
 
   return (

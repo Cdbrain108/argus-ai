@@ -14,6 +14,8 @@ import multiprocessing as mp
 import queue
 import time
 import traceback
+import datetime
+import re
 from typing import Any
 
 import numpy as np
@@ -27,6 +29,7 @@ class SandboxResult:
         self.status = "pending"
         self.output_code = ""
         self.analysis_name = "custom_analysis"
+        self.chart = None
         self.chart_type = None
         self.chart_data: dict = {}
         self.artifact = None
@@ -39,14 +42,19 @@ class SandboxResult:
         self.message = None
         self.retryable = False
         self.variables: dict = {}
+        self.dataset_update: dict | None = None
+        self.transformed_records: list | None = None
 
     def to_dict(self) -> dict:
+        chart_obj = self.chart
+        if not chart_obj and self.chart_type:
+            chart_obj = {"type": self.chart_type, "data": self.chart_data, "artifact": self.artifact}
         return {
             "status": self.status,
             "analysis_name": self.analysis_name,
-            # Shaped like the deterministic tools' output so the frontend's one
-            # chart renderer handles custom results too.
-            "chart": {"type": self.chart_type, "data": self.chart_data, "artifact": self.artifact} if self.chart_type else None,
+            "chart": chart_obj,
+            "chart_type": self.chart_type or (chart_obj.get("type") if isinstance(chart_obj, dict) else None),
+            "chart_data": self.chart_data or (chart_obj.get("data") if isinstance(chart_obj, dict) else {}),
             "tables": self.tables,
             "statistics": self.statistics,
             "insights": self.insights,
@@ -56,6 +64,8 @@ class SandboxResult:
             "message": self.message,
             "retryable": self.retryable,
             "variables": self.variables,
+            "dataset_update": self.dataset_update,
+            "transformed_records": self.transformed_records,
         }
 
 
@@ -96,7 +106,12 @@ def _safe_globals(df: pd.DataFrame) -> dict:
     builtin_map = __builtins__ if isinstance(__builtins__, dict) else vars(__builtins__)
     allowed_builtins = {
         name: builtin_map[name]
-        for name in ("len", "range", "sorted", "max", "min", "sum", "abs", "round", "int", "float", "str", "bool", "list", "dict", "tuple", "set", "enumerate", "zip", "any", "all", "print", "isinstance")
+        for name in (
+            "len", "range", "sorted", "max", "min", "sum", "abs", "round",
+            "int", "float", "str", "bool", "list", "dict", "tuple", "set",
+            "enumerate", "zip", "any", "all", "print", "isinstance", "type",
+            "hasattr", "map", "filter", "reversed", "slice", "iter", "next",
+        )
         if name in builtin_map
     }
     allowed_builtins["__import__"] = _safe_import
@@ -108,6 +123,8 @@ def _safe_globals(df: pd.DataFrame) -> dict:
         "np": np,
         "pandas": pd,
         "numpy": np,
+        "re": re,
+        "datetime": datetime,
     }
 
 
@@ -127,10 +144,57 @@ def _worker(code: str, df: pd.DataFrame, output) -> None:
             chart_data = value.get("chart_data")
             result.chart_data = chart_data if isinstance(chart_data, dict) else {}
             result.artifact = value.get("artifact")
+            if isinstance(value.get("chart"), dict):
+                result.chart = value["chart"]
+            elif result.chart_type and result.chart_data:
+                result.chart = {"type": result.chart_type, "data": result.chart_data, "artifact": result.artifact}
             result.statistics = value.get("statistics", {}) if isinstance(value.get("statistics", {}), dict) else {}
             result.insights = value.get("insights", []) if isinstance(value.get("insights", []), list) else [str(value.get("insights"))]
             result.tables = value.get("tables", []) if isinstance(value.get("tables", []), list) else []
-        result.variables = {"columns": list(df.columns)[:50], "shape": list(df.shape)}
+
+        # Detect transformed, cleaned, or mutated dataframe
+        candidate_df = None
+        for cand in (
+            value.get("df") if isinstance(value, dict) else None,
+            value.get("transformed_df") if isinstance(value, dict) else None,
+            value.get("dataset") if isinstance(value, dict) else None,
+            globals_dict.get("df_result"),
+            globals_dict.get("transformed_df"),
+            globals_dict.get("df_cleaned"),
+            globals_dict.get("df_transformed"),
+            globals_dict.get("df"),
+        ):
+            if isinstance(cand, pd.DataFrame):
+                # Did it change compared to the original input df?
+                if (
+                    cand.shape != df.shape
+                    or list(cand.columns) != list(df.columns)
+                    or not cand.equals(df)
+                ):
+                    candidate_df = cand
+                    break
+
+        if candidate_df is not None:
+            new_cols = list(candidate_df.columns)
+            old_cols = list(df.columns)
+            result.dataset_update = {
+                "transformed": True,
+                "rows": int(len(candidate_df)),
+                "columns": new_cols,
+                "shape": list(candidate_df.shape),
+                "row_delta": int(len(candidate_df) - len(df)),
+                "new_columns": [c for c in new_cols if c not in old_cols],
+                "dropped_columns": [c for c in old_cols if c not in new_cols],
+                "preview": candidate_df.head(15).to_dict(orient="records"),
+                "dtypes": {str(c): str(t) for c, t in candidate_df.dtypes.items()},
+            }
+            # Limit serialized records to 5,000 rows for IPC safety
+            result.transformed_records = candidate_df.head(5000).to_dict(orient="records")
+            final_df = candidate_df
+        else:
+            final_df = df
+
+        result.variables = {"columns": list(final_df.columns)[:50], "shape": list(final_df.shape)}
         output.put(result.to_dict())
     except Exception as exc:
         result.status = "error"

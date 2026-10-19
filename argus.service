@@ -1,0 +1,16 @@
+[Unit]
+Description=ARGUS Automated Agentic EDA Tool
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/argus_app
+ExecStart=/home/ubuntu/argus_app/run_server.sh
+Restart=always
+RestartSec=3
+StandardOutput=append:/var/log/argus.log
+StandardError=append:/var/log/argus.log
+
+[Install]
+WantedBy=multi-user.target

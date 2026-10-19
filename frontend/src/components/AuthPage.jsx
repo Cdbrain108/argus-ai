@@ -418,16 +418,41 @@ export default function AuthPage({
                 <span>OR</span>
               </div>
 
-              <button
-                type="button"
-                className="auth-guest-btn"
-                onClick={onDemo}
-                disabled={busy || googleBusy}
-              >
-                <Zap size={14} color="#EF9F27" />
-                <span>Continue as Guest with Titanic Demo</span>
-                <ArrowRight size={13} />
-              </button>
+              <div className="auth-guest-section">
+                <span className="auth-guest-heading">OR EXPLORE PRACTICE DATASETS AS GUEST:</span>
+                <div className="auth-guest-grid">
+                  <button
+                    type="button"
+                    className="auth-guest-pill-btn"
+                    onClick={() => onDemo?.('titanic')}
+                    disabled={busy || googleBusy}
+                    title="Load Titanic Survival Demo"
+                  >
+                    <Zap size={13} color="#f97316" />
+                    <span>Titanic Demo</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="auth-guest-pill-btn"
+                    onClick={() => onDemo?.('bikeshare')}
+                    disabled={busy || googleBusy}
+                    title="Load Capital Bike Share Demo"
+                  >
+                    <Zap size={13} color="#38bdf8" />
+                    <span>Bike Share Demo</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="auth-guest-pill-btn"
+                    onClick={() => onDemo?.('churn')}
+                    disabled={busy || googleBusy}
+                    title="Load Customer Churn Demo"
+                  >
+                    <Zap size={13} color="#10b981" />
+                    <span>Churn Demo</span>
+                  </button>
+                </div>
+              </div>
             </form>
 
             <div className="auth-card-footer">

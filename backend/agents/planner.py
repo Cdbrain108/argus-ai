@@ -149,7 +149,15 @@ class Planner:
             "where ", "filter ", "greater than", "less than", "older than", "younger than",
             "who paid", "only passengers", "only rows", "subset of"
         ))
-        if has_formula or has_custom_binning or has_custom_aggregation or has_filtering:
+        has_transformation = any(w in q for w in (
+            "create column", "add column", "new column", "drop column", "remove column",
+            "filter", "filter rows", "subset", "impute", "fillna", "fill missing",
+            "transform", "normalize", "standardize", "encode", "one-hot", "scale",
+            "mutate", "feature engineering", "derive", "extract", "clean dataset by",
+            "clean the dataset by", "clean data by", "clean the data by", "replace values",
+            "convert column", "rename column", "drop duplicates", "deduplicate",
+        ))
+        if has_formula or has_custom_binning or has_custom_aggregation or has_filtering or has_transformation:
             return {"intent": "custom", "confidence": 0.95}
 
         # 4b. Multi-feature relationships and multivariate visualizations (3+ columns or comparison inquiries)
@@ -162,7 +170,7 @@ class Planner:
 
         # 6. Open correlation inquiries (e.g. "which columns are correlated with X")
         if any(w in q for w in ("which column", "which feature", "what column", "what feature", "which variable", "correlations with", "correlated with")) and "correlat" in q:
-            if any(w in q for w in ("target", "predict", "outcome", "surviv", "label")):
+            if any(w in q for w in ("target", "target variable", "predict", "outcome", "dependent", "label", "goal", "response")):
                 return {"intent": "feature_importance", "confidence": 0.95}
             return {"intent": "correlation_analysis", "confidence": 0.95}
 
@@ -225,24 +233,29 @@ class Planner:
                     if col not in found:
                         found.append(col)
 
-            # 2. Stem, prefix, and alias matches (e.g. survival -> Survived, class -> Pclass, fares -> Fare)
+            # 2. Generalized stem, plural, and prefix matches
             for col in self.column_names:
                 if col in found:
                     continue
                 c_low = col.casefold()
+                # Singular/plural normalization (e.g. fares -> fare, classes -> class)
+                c_norm = c_low.rstrip("s")
                 stem = c_low[:4] if len(c_low) >= 4 else c_low
                 for token in tokens:
-                    if len(token) >= 4 and (token.startswith(stem) or c_low.startswith(token[:4])):
+                    t_norm = token.rstrip("s")
+                    if (len(t_norm) >= 3 and t_norm == c_norm) or (len(token) >= 4 and (token.startswith(stem) or c_low.startswith(token[:4]))):
                         found.append(col)
                         break
-                    elif token in ("class", "classes") and c_low == "pclass":
-                        found.append(col)
-                        break
-                    elif token in ("fares", "price", "cost", "ticket") and c_low == "fare":
-                        found.append(col)
-                        break
-                    elif token in ("gender", "male", "female", "women", "men") and c_low == "sex":
-                        found.append(col)
+
+            # 3. Dynamic category value matching: match columns if the query names one of their sample values
+            for col_info in self.profile.get("column_summary", []):
+                col_name = col_info.get("name")
+                if not col_name or col_name in found:
+                    continue
+                samples = [str(s).casefold() for s in col_info.get("samples", []) if s]
+                for token in tokens:
+                    if len(token) >= 3 and token in samples:
+                        found.append(col_name)
                         break
             return found
 

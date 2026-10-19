@@ -15,6 +15,7 @@ import json
 import re
 from typing import Any, Dict, List, Optional, TypedDict
 
+import numpy as np
 import pandas as pd
 from langgraph.graph import StateGraph, START, END
 
@@ -212,26 +213,66 @@ def _generate_multivariate_fallback(df: Any, columns: List[str], question: str) 
     if clean_df.empty:
         clean_df = df[valid_cols].copy()
 
-    # Case 1: At least 1 numeric column and categorical/discrete columns (e.g. Fare with Sex & Survived)
+    # Case 1: At least 1 numeric column and categorical/discrete columns
     if num_cols and cat_cols:
         target_num = num_cols[0]
         group_cats = cat_cols[:2]
+        # Order categories: higher cardinality dimension as primary X-group, lower cardinality as sub-bars
         if len(group_cats) == 2:
             c0, c1 = group_cats[0], group_cats[1]
-            c0_target = any(w in c0.lower() for w in ("surviv", "target", "churn", "label", "outcome", "status"))
-            c1_target = any(w in c1.lower() for w in ("surviv", "target", "churn", "label", "outcome", "status"))
-            if c0_target and not c1_target:
+            if clean_df[c0].nunique() < clean_df[c1].nunique():
                 group_cats = [c1, c0]
 
-        grouped = clean_df.groupby(group_cats)[target_num].agg(["mean", "median", "count"]).round(2).reset_index()
+        # Dynamic Aggregation Metric Extraction from user question
+        q_low = question.lower()
+        if any(w in q_low for w in ("median", "p50", "50th percentile", "middle")):
+            agg_key = "median"
+            agg_label = "Median"
+        elif any(w in q_low for w in ("sum", "total", "aggregate", "combined")):
+            agg_key = "sum"
+            agg_label = "Total"
+        elif any(w in q_low for w in ("min", "minimum", "lowest", "youngest", "cheapest")):
+            agg_key = "min"
+            agg_label = "Minimum"
+        elif any(w in q_low for w in ("max", "maximum", "highest", "oldest", "expensive", "peak")):
+            agg_key = "max"
+            agg_label = "Maximum"
+        elif any(w in q_low for w in ("count", "frequency", "volume", "how many")):
+            agg_key = "count"
+            agg_label = "Count"
+        elif any(w in q_low for w in ("std", "standard deviation", "spread", "variance")):
+            agg_key = "std"
+            agg_label = "Std Dev"
+        else:
+            agg_key = "mean"
+            agg_label = "Mean"
+
+        # Semantic Column Domain & Unit Detection (Agnostic across any dataset)
+        target_low = target_num.lower()
+        is_currency = bool(re.search(r"\b(fare|price|cost|salary|revenue|income|spend|budget|fee|amount|usd|eur|gbp|inr)\b", target_low))
+        is_age = bool(re.search(r"\b(age|tenure|duration|experience|years|yrs)\b", target_low))
+        is_pct = bool(re.search(r"\b(rate|ratio|pct|percent|proportion|share)\b", target_low))
+
+        unit = "$" if is_currency else ("yrs" if is_age else ("%" if is_pct else ""))
+
+        def _fmt_stat(val: float) -> str:
+            if is_currency:
+                return f"${val:,.2f}"
+            if is_age:
+                return f"{val:.1f}" if val % 1 != 0 else f"{int(val)}"
+            if is_pct:
+                return f"{val:.1f}%"
+            return f"{val:,.2f}".rstrip("0").rstrip(".") if val % 1 != 0 else f"{int(val):,}"
+
+        grouped = clean_df.groupby(group_cats)[target_num].agg(["mean", "median", "count", "min", "max"]).round(2).reset_index()
 
         def _fmt_val(col: str, val: Any) -> str:
-            col_l = str(col).lower()
-            if col_l == "survived":
-                return "Survived" if str(val) in ("1", "1.0", "True", "true") else "Perished"
-            if col_l == "sex":
-                return str(val).capitalize()
-            return f"{col}={val}"
+            if isinstance(val, (bool, np.bool_)):
+                return "True" if val else "False"
+            s = str(val).strip()
+            if re.match(r"^\d+\.0$", s):
+                s = s[:-2]
+            return s.capitalize() if s.isalpha() else s
 
         labels = []
         stats = {}
@@ -239,37 +280,29 @@ def _generate_multivariate_fallback(df: Any, columns: List[str], question: str) 
             cohort_name = " - ".join([_fmt_val(c, row[c]) for c in group_cats])
             labels.append(cohort_name)
             stats[cohort_name] = {
-                f"Average {target_num}": round(float(row["mean"]), 2),
+                f"{agg_label} {target_num}": round(float(row[agg_key]), 2),
+                f"Mean {target_num}": round(float(row["mean"]), 2),
                 f"Median {target_num}": round(float(row["median"]), 2),
-                "Passenger Count": int(row["count"]),
+                "Record Count": int(row["count"]),
             }
 
-        chart_data_vals = [round(float(row["mean"]), 2) for _, row in grouped.iterrows()]
+        chart_data_vals = [round(float(row[agg_key]), 2) for _, row in grouped.iterrows()]
 
         insights = []
         if len(grouped) >= 2:
-            max_idx = grouped["mean"].idxmax()
-            min_idx = grouped["mean"].idxmin()
+            max_idx = grouped[agg_key].idxmax()
+            min_idx = grouped[agg_key].idxmin()
             max_row = grouped.loc[max_idx]
             min_row = grouped.loc[min_idx]
             max_cohort = " - ".join([_fmt_val(c, max_row[c]) for c in group_cats])
             min_cohort = " - ".join([_fmt_val(c, min_row[c]) for c in group_cats])
             insights.append(
-                f"The highest average {target_num} is in '{max_cohort}' (${max_row['mean']:.2f}), "
-                f"while the lowest is in '{min_cohort}' (${min_row['mean']:.2f})."
+                f"The highest {agg_label.lower()} {target_num} is in '{max_cohort}' ({_fmt_stat(max_row[agg_key])}), "
+                f"while the lowest is in '{min_cohort}' ({_fmt_stat(min_row[agg_key])})."
             )
 
-        if any(c.lower() == "survived" for c in group_cats):
-            surv_avg = clean_df[clean_df["Survived"].isin([1, "1", True])][target_num].mean()
-            perish_avg = clean_df[clean_df["Survived"].isin([0, "0", False])][target_num].mean()
-            if surv_avg and perish_avg:
-                insights.append(
-                    f"Across demographic cohorts, survivors paid an average {target_num} of ${surv_avg:.2f} "
-                    f"versus ${perish_avg:.2f} for passengers who perished."
-                )
-
         insights.append(
-            f"Segmented across {len(grouped)} cohort groups covering {int(len(clean_df)):,} rows."
+            f"Segmented across {len(grouped)} distinct cohort combinations covering {int(len(clean_df)):,} records."
         )
 
         # Build grouped structure for side-by-side visualization
@@ -280,7 +313,7 @@ def _generate_multivariate_fallback(df: Any, columns: List[str], question: str) 
         for _, row in grouped.iterrows():
             g_name = _fmt_val(primary_cat, row[primary_cat])
             sub_lbl = _fmt_val(secondary_cat, row[secondary_cat]) if secondary_cat else "Metric"
-            val = round(float(row["mean"]), 2)
+            val = round(float(row[agg_key]), 2)
             if g_name not in groups_map:
                 groups_map[g_name] = []
             groups_map[g_name].append({
@@ -288,6 +321,7 @@ def _generate_multivariate_fallback(df: Any, columns: List[str], question: str) 
                 "value": val,
                 "count": int(row["count"]),
                 "median": round(float(row["median"]), 2),
+                "mean": round(float(row["mean"]), 2),
             })
 
         groups_list = [{"name": k, "bars": v} for k, v in groups_map.items()]
@@ -295,20 +329,20 @@ def _generate_multivariate_fallback(df: Any, columns: List[str], question: str) 
         series_names = list(dict.fromkeys(
             bar["label"] for g in groups_list for bar in g["bars"]
         ))
+        palette = ["#38bdf8", "#818cf8", "#34d399", "#f59e0b", "#ec4899", "#f87171", "#a78bfa"]
         series_list = []
-        for s in series_names:
-            s_low = s.lower()
-            color = "#10b981" if ("surviv" in s_low and "not" not in s_low and "perish" not in s_low) else (
-                "#f43f5e" if ("perish" in s_low or "died" in s_low or "not" in s_low) else "#38bdf8"
-            )
-            series_list.append({"name": s, "color": color})
+        for idx, s in enumerate(series_names):
+            series_list.append({"name": s, "color": palette[idx % len(palette)]})
 
         chart = {
             "type": "grouped_bar",
             "data": {
-                "title": f"Mean {target_num} by {primary_cat} & {secondary_cat or ''}".strip(),
+                "title": f"{agg_label} {target_num} by {primary_cat} & {secondary_cat or ''}".strip(),
                 "xLabel": primary_cat,
-                "yLabel": f"Average {target_num} ($)",
+                "yLabel": f"{agg_label} {target_num} ({unit})" if unit else f"{agg_label} {target_num}",
+                "unit": unit,
+                "metricLabel": f"{agg_label} {target_num}",
+                "entityName": "records",
                 "groups": groups_list,
                 "series": series_list,
                 "labels": labels,
@@ -415,27 +449,19 @@ def _format_chart_from_result(result: Dict[str, Any]) -> Optional[Dict[str, Any]
                     continue
                 items.append((str(k), float(v)))
 
-        # Try to parse into side-by-side grouped categories (e.g. Female/Male x Survived/Perished)
+        # Try to parse into side-by-side grouped categories
         grouped_map = {}
         all_subs = set()
         for k_str, val in items:
             cleaned = re.sub(r"^((mean|avg|median|sum|count|fare)_+)+", "", k_str, flags=re.I)
             parts = re.split(r"\s*-\s*|\s*·\s*|\s*/\s*|_", cleaned)
-            parts = [p for p in parts if p]
+            parts = [p.strip() for p in parts if p.strip()]
             if len(parts) >= 2:
                 p0 = parts[0]
                 p1 = " ".join(parts[1:])
-                p0_is_outcome = p0.lower() in ("1", "0", "true", "false", "survived", "perished", "died")
-                p1_is_outcome = p1.lower() in ("1", "0", "true", "false", "survived", "perished", "died")
-                if p0_is_outcome and not p1_is_outcome:
-                    p0, p1 = p1, p0
+                g_name = p0.capitalize() if p0.isalpha() else p0
+                sub = p1.capitalize() if p1.isalpha() else p1
 
-                g_name = p0.capitalize()
-                sub = p1.capitalize()
-                if sub in ("1", "1.0", "True"):
-                    sub = "Survived"
-                elif sub in ("0", "0.0", "False"):
-                    sub = "Perished"
                 if g_name not in grouped_map:
                     grouped_map[g_name] = []
                 grouped_map[g_name].append({"label": sub, "value": val})
@@ -443,19 +469,16 @@ def _format_chart_from_result(result: Dict[str, Any]) -> Optional[Dict[str, Any]
 
         if len(grouped_map) >= 2 and all(len(bars) >= 1 for bars in grouped_map.values()):
             groups_list = [{"name": k, "bars": v} for k, v in grouped_map.items()]
+            palette = ["#38bdf8", "#818cf8", "#34d399", "#f59e0b", "#ec4899", "#f87171", "#a78bfa"]
             series_list = []
-            for s in all_subs:
-                s_low = s.lower()
-                color = "#10b981" if ("surviv" in s_low and "not" not in s_low and "perish" not in s_low) else (
-                    "#f43f5e" if ("perish" in s_low or "died" in s_low or "not" in s_low) else "#38bdf8"
-                )
-                series_list.append({"name": s, "color": color})
+            for idx, s in enumerate(sorted(all_subs)):
+                series_list.append({"name": s, "color": palette[idx % len(palette)]})
             chart = {
                 "type": "grouped_bar",
                 "data": {
                     "title": result.get("analysis_name") or "Multivariate Comparison",
-                    "xLabel": "Demographic Cohort",
-                    "yLabel": result.get("analysis_name") or "Average Value",
+                    "xLabel": "Cohort",
+                    "yLabel": result.get("analysis_name") or "Value",
                     "groups": groups_list,
                     "series": series_list,
                 },
@@ -520,7 +543,14 @@ def sandbox_code_node(state: AnalystState) -> Dict[str, Any]:
     col_details = []
     for c in target_cols[:6]:
         dtype = str(df[c].dtype)
-        if pd.api.types.is_numeric_dtype(df[c]):
+        # Check if boolean or low-cardinality discrete column to expose exact values
+        if pd.api.types.is_bool_dtype(df[c]) or df[c].dtype == "boolean" or df[c].nunique() <= 6:
+            top_vals = [
+                bool(x) if isinstance(x, (bool, np.bool_)) else (round(float(x), 2) if isinstance(x, (int, float)) else str(x))
+                for x in df[c].dropna().unique()[:6]
+            ]
+            col_details.append(f"- `{c}` ({dtype}): distinct={df[c].nunique()}, values={top_vals}")
+        elif pd.api.types.is_numeric_dtype(df[c]):
             non_null = df[c].dropna()
             if not non_null.empty:
                 col_details.append(f"- `{c}` ({dtype}): min={non_null.min():.2f}, max={non_null.max():.2f}, unique_values={df[c].nunique()}")
@@ -532,29 +562,32 @@ def sandbox_code_node(state: AnalystState) -> Dict[str, Any]:
     schema_block = "\n".join(col_details)
 
     prompt = (
-        f"You are an expert Python data analyst. Write safe, production-grade pandas code to answer this question:\n"
-        f"Question: \"{question}\"\n\n"
-        f"Target Columns and Schema:\n{schema_block}\n\n"
+        f"You are an expert Python data analyst and data engineer. Write safe, production-grade pandas/numpy code to execute the user's request on `df`:\n"
+        f"Request: \"{question}\"\n\n"
+        f"Columns and Schema:\n{schema_block}\n\n"
         f"All Columns: {list(df.columns)}\n\n"
-        "Instructions:\n"
-        "1. Write pure pandas/numpy code operating on `df`. No imports, no file/network I/O, no dunder methods.\n"
-        "2. Understand the user's analytical goal based on the column types:\n"
-        "   - If comparing a numeric metric across multiple categorical features (e.g. Fare by Sex and Survived):\n"
-        "     Group by the categories, compute aggregates (mean, median, count), and format clean human-readable names.\n"
-        "     Structure a 'grouped_bar' chart with:\n"
-        "     groups: [{'name': 'Female', 'bars': [{'label': 'Survived', 'value': ...}, {'label': 'Perished', 'value': ...}]}, ...]\n"
-        "     series: [{'name': 'Survived', 'color': '#10b981'}, {'name': 'Perished', 'color': '#f43f5e'}]\n"
-        "     xLabel: 'Gender', yLabel: 'Average Fare ($)'\n"
-        "   - If comparing 2 numeric variables across a categorical variable (e.g. Age vs Fare by Sex):\n"
-        "     Provide scatter plot data: {'x': [...], 'y': [...], 'categories': [...], 'xLabel': ..., 'yLabel': ..., 'hueLabel': ...}\n"
-        "   - If analyzing a single metric or correlation, provide 'bar', 'scatter', or summary statistics.\n"
-        "3. Output format:\n"
+        "Guidelines:\n"
+        "1. Write pure pandas/numpy/scipy/sklearn code operating on `df`. No file or network I/O, no blocked builtins. Keep code concise.\n"
+        "2. DATA TRANSFORMATIONS & CLEANING:\n"
+        "   - If the user asks to clean, impute, transform, filter, create new columns, or mutate data:\n"
+        "     Perform the transformation on `df` (e.g. `df['new_col'] = ...`, `df = df.dropna()`, `df['col'] = df['col'].fillna(...)`).\n"
+        "     Assign `df` to `result['df'] = df` so the resultant transformed dataset is preserved and made available to the user!\n"
+        "3. ANALYTICAL QUESTIONS & VISUALIZATIONS:\n"
+        "   - Pay strict attention to the requested metric/aggregation (median, mean, sum, count, etc.).\n"
+        "   - Choose the statistically best visualization for the data shape:\n"
+        "     * 2 Categorical / Discrete columns + 1 Numeric metric: Use 'grouped_bar' with groups: [{'name': <Category1>, 'bars': [{'label': <Category2>, 'value': <num>}]}] and series: [{'name': <Category2>, 'color': <hex>}].\n"
+        "     * 1 Categorical column + 1 Numeric metric: Use 'bar': {'labels': [...], 'values': [...], 'xLabel': ..., 'yLabel': ...}.\n"
+        "     * 2 Continuous Numeric variables: Use 'scatter': {'x': [...], 'y': [...], 'categories': [...], 'xLabel': ..., 'yLabel': ...}.\n"
+        "     * Distribution spreads/quartiles across groups: Use 'box_plot': {'groups': [{'name': ..., 'boxes': [{'label': ..., 'min': ..., 'q25': ..., 'median': ..., 'q75': ..., 'max': ...}]}]}.\n"
+        "     * Time series / sequential: Use 'line'.\n"
+        "4. Output format:\n"
         "   Assign a dictionary named `result` with keys:\n"
-        "   - 'analysis_name': Descriptive, executive title (e.g. 'Mean Fare by Gender and Survival Status')\n"
-        "   - 'statistics': Dictionary with human-readable keys and clean numeric values (NEVER raw code variable names like 'mean_fare_female_survived')\n"
-        "   - 'insights': List of 2 to 3 concise, highly informative analytical findings\n"
-        "   - 'chart_type': 'grouped_bar' (or 'scatter', 'bar', 'line')\n"
-        "   - 'chart_data': Dictionary matching the chosen chart_type\n\n"
+        "   - 'analysis_name': Descriptive, executive title matching the exact analytical or transformation goal\n"
+        "   - 'statistics': Dictionary with human-readable keys and clean numeric values (never raw code variable names)\n"
+        "   - 'insights': List of 2 to 3 concise, informative analytical findings or transformation summaries\n"
+        "   - 'chart_type': 'grouped_bar', 'box_plot', 'scatter', 'bar', 'line', or None (if pure transformation/cleaning)\n"
+        "   - 'chart_data': Dictionary matching chart_type, or {} if none\n"
+        "   - 'df': The transformed dataframe (if data was cleaned, mutated, filtered, or new columns were created)\n\n"
         "Return valid JSON only with one key 'code'."
     )
 
@@ -562,13 +595,17 @@ def sandbox_code_node(state: AnalystState) -> Dict[str, Any]:
         raw = chat_completion(
             prompt,
             system_prompt="You are an expert Python data analyst who writes clean, safe pandas analyses and structures rich visualization data. Return valid JSON only.",
-            max_tokens=800,
+            max_tokens=2048,
             temperature=0,
             timeout=codegen_timeout(),
         )
         match = re.search(r"\{.*\}", raw, re.DOTALL)
         payload = json.loads(match.group(0)) if match else {}
         code = payload.get("code", "")
+        if not code and "code" in raw:
+            cb_match = re.search(r"```(?:python)?\s*\n(.*?)```", raw, re.DOTALL)
+            if cb_match:
+                code = cb_match.group(1).strip()
     except Exception as exc:
         fallback = _run_multivariate_fallback()
         if fallback:
@@ -594,8 +631,33 @@ def sandbox_code_node(state: AnalystState) -> Dict[str, Any]:
             "retry_count": state.get("retry_count", 0),
         }
 
+    # Sanity check: detect empty calculations (all None statistics or all 0 chart values due to indexing mismatch)
+    stats = result.get("statistics") or {}
+    all_stats_none = bool(stats) and all(
+        v is None or (isinstance(v, float) and np.isnan(v)) for v in stats.values()
+    )
+    cd = result.get("chart_data") or {}
+    cats = cd.get("categories") or []
+    all_points_zero = bool(cats) and all(
+        p.get("value", 0) == 0 for cat in cats for p in cat.get("points", [])
+    )
+    if all_stats_none or all_points_zero:
+        fallback = _run_multivariate_fallback()
+        if fallback:
+            return fallback
+
     # Format chart visualization into clean grouped or single chart
     chart = _format_chart_from_result(result)
+
+    # If dataset was transformed, mutated, cleaned, or new columns created, update dataset session!
+    dataset_update = result.get("dataset_update")
+    if dataset_update and sandbox_result.transformed_records:
+        transformed_df = pd.DataFrame(sandbox_result.transformed_records)
+        ds_id = state.get("dataset_id")
+        if ds_id:
+            update_info = ds.update_dataset_dataframe(ds_id, transformed_df)
+            if update_info:
+                result["dataset_update"] = update_info
 
     result.update({
         "analysis_id": "custom",
@@ -688,16 +750,27 @@ def explainer_node(state: AnalystState) -> Dict[str, Any]:
     if not analysis:
         return {"reply": state.get("reply", "Analysis completed.")}
 
+    # Fast path: if verified analytical insights or summaries were already computed by
+    # the Python sandbox or statistical engine, synthesize them directly without waiting
+    # for a redundant 3-5s LLM network round-trip.
+    raw_insights = analysis.get("insights") or []
+    clean_insights = [str(i).strip() for i in raw_insights if str(i).strip()]
+    if clean_insights and sum(len(i) for i in clean_insights) >= 30:
+        reply = " ".join(clean_insights)
+        analysis["explanation"] = reply
+        steps = list(state.get("status_steps", [])) + ["Executive synthesis ready"]
+        return {"reply": reply, "analysis": analysis, "status_steps": steps}
+
     if not is_configured():
         title = analysis.get("title") or analysis.get("analysis_name") or "Analysis"
-        insights = " ".join([str(i) for i in (analysis.get("insights") or [])][:3])
-        reply = f"Analysis completed: {title}. {insights}".strip()
+        insights_str = " ".join(clean_insights[:3]) if clean_insights else ""
+        reply = f"Analysis completed: {title}. {insights_str}".strip()
         analysis["explanation"] = reply
         steps = list(state.get("status_steps", [])) + ["Preparing executive explanation"]
         return {"reply": reply, "analysis": analysis, "status_steps": steps}
 
     prompt_focus = (
-        "Explain what the computed numbers mean in 2 to 3 concise, highly informative sentences. "
+        "Explain what the computed numbers mean in 2 concise, highly informative sentences. "
         "Do not mention thinking steps. Start your response directly with the analytical finding."
     )
     context_block = ""
@@ -706,12 +779,20 @@ def explainer_node(state: AnalystState) -> Dict[str, Any]:
         if recent:
             context_block = "Recent conversation context:\n" + "\n".join(recent) + "\n\n"
 
+    # Lean payload for fast tokenization & lowest latency
+    compact_summary = {
+        "title": analysis.get("title") or analysis.get("analysis_name"),
+        "statistics": analysis.get("statistics"),
+        "insights": clean_insights,
+        "summary": analysis.get("summary"),
+    }
+
     try:
         reply = chat_completion(
             prompt=(
                 f"{context_block}"
                 f"Current user question: {question}\n"
-                f"Computed analysis statistics and result: {json.dumps(analysis, default=str)[:7000]}\n\n"
+                f"Computed analysis statistics: {json.dumps(compact_summary, default=str)}\n\n"
                 f"{prompt_focus}"
             ),
             system_prompt=(
@@ -719,8 +800,9 @@ def explainer_node(state: AnalystState) -> Dict[str, Any]:
                 "Provide a direct, authoritative, and plain-English answer based solely on the computed data. "
                 "Never hallucinate numbers. Never say 'The user is asking' or 'Based on the prompt'."
             ),
-            max_tokens=250,
-            temperature=0.3,
+            max_tokens=180,
+            temperature=0.2,
+            timeout=6.0,
         )
     except Exception:
         title = analysis.get("title") or analysis.get("analysis_name") or "Analysis"

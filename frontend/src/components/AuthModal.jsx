@@ -342,18 +342,47 @@ export default function AuthModal({
 
       <div className="arg-auth-footer">
         {onDemo && (
-          <button
-            type="button"
-            className="arg-auth-guest-btn"
-            onClick={() => {
-              if (!embedded) onClose?.()
-              onDemo?.()
-            }}
-          >
-            <Zap size={14} color="#EF9F27" />
-            <span>Continue as Guest with Titanic Demo</span>
-            <ArrowRight size={13} />
-          </button>
+          <div className="arg-auth-guest-section">
+            <span className="arg-auth-guest-heading">OR EXPLORE AS GUEST:</span>
+            <div className="arg-auth-guest-grid">
+              <button
+                type="button"
+                className="arg-auth-guest-btn"
+                onClick={() => {
+                  if (!embedded) onClose?.()
+                  onDemo?.('titanic')
+                }}
+                title="Explore Titanic Survival benchmark dataset"
+              >
+                <Zap size={13} color="#f97316" />
+                <span>Titanic Demo</span>
+              </button>
+              <button
+                type="button"
+                className="arg-auth-guest-btn"
+                onClick={() => {
+                  if (!embedded) onClose?.()
+                  onDemo?.('bikeshare')
+                }}
+                title="Explore Capital Bike Share benchmark dataset"
+              >
+                <Zap size={13} color="#38bdf8" />
+                <span>Bike Share Demo</span>
+              </button>
+              <button
+                type="button"
+                className="arg-auth-guest-btn"
+                onClick={() => {
+                  if (!embedded) onClose?.()
+                  onDemo?.('churn')
+                }}
+                title="Explore Customer Churn benchmark dataset"
+              >
+                <Zap size={13} color="#10b981" />
+                <span>Churn Demo</span>
+              </button>
+            </div>
+          </div>
         )}
         <p className="arg-auth-disclaimer">
           Secured with Firebase Authentication. Your datasets remain 100% private.

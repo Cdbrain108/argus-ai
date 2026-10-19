@@ -266,3 +266,26 @@ def dataset_columns(dataset_id: str):
     if s is None:
         raise HTTPException(status_code=404, detail="Dataset not found")
     return {"columns": s.column_summary()}
+
+
+@router.get("/{dataset_id}/export")
+def export_dataset(dataset_id: str, format: str = "csv"):
+    from backend.services import dataset_service as ds
+    from fastapi.responses import Response
+    s = ds.get_dataset(dataset_id)
+    if s is None:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    stem = Path(s.filename).stem or "dataset"
+    if format == "json":
+        content = s.df.to_json(orient="records", indent=2)
+        media_type = "application/json"
+        filename = f"{stem}_transformed.json"
+    else:
+        content = s.df.to_csv(index=False)
+        media_type = "text/csv"
+        filename = f"{stem}_transformed.csv"
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename=\"{filename}\""}
+    )
