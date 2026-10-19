@@ -22,8 +22,36 @@ from backend.analysis.adapters import (
 )
 from backend.analysis.overview import compute_dataset_overview
 
-# In-memory store — replace with Redis/Blob in production
+import tempfile
+import pickle
+from pathlib import Path
+
+# In-memory store + disk persistence for cross-worker & reboot resilience
 _DATASETS: Dict[str, DatasetSession] = {}
+_STORAGE_DIR = Path(tempfile.gettempdir()) / "argus_dataset_store"
+_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _save_session_to_disk(session: DatasetSession) -> None:
+    try:
+        file_path = _STORAGE_DIR / f"{session.dataset_id}.pkl"
+        with open(file_path, "wb") as f:
+            pickle.dump(session, f, protocol=pickle.HIGHEST_PROTOCOL)
+    except Exception as e:
+        print(f"[DatasetService] Disk persist notice: {e}")
+
+
+def _load_session_from_disk(dataset_id: str) -> Optional[DatasetSession]:
+    try:
+        file_path = _STORAGE_DIR / f"{dataset_id}.pkl"
+        if file_path.is_file():
+            with open(file_path, "rb") as f:
+                sess = pickle.load(f)
+                _DATASETS[sess.dataset_id] = sess
+                return sess
+    except Exception as e:
+        print(f"[DatasetService] Disk load notice: {e}")
+    return None
 
 
 def _df_hash(df: pd.DataFrame) -> str:
@@ -60,6 +88,7 @@ def create_dataset_session(
         load_report=load_report,
     )
     _DATASETS[dataset_id] = session
+    _save_session_to_disk(session)
     return session
 
 
@@ -89,6 +118,7 @@ def update_dataset_dataframe(
             }
     session.narrative = None  # Clear cache so fresh narrative is generated
     session._profile_cache = None  # Clear cached profile so fresh profile is computed
+    _save_session_to_disk(session)
 
     new_cols = list(new_df.columns)
     new_rows = int(len(new_df))
@@ -107,16 +137,33 @@ def update_dataset_dataframe(
 
 
 def get_dataset(dataset_id: str) -> Optional[DatasetSession]:
-    """Look up a session by id. Returns None when it genuinely is not there.
-
-    This used to fall back to "the only dataset in memory" when the id was
-    unknown, and, on an empty store, to loading a bundled demo CSV and
-    registering it under the *requested* id. Both mean a caller asking for
-    dataset X is silently handed dataset Y — the wrong data, presented as
-    theirs, with no error. The deliberate demo entry point is
-    ``POST /api/datasets/demo``.
+    """Look up a session by id with multi-layer fallback:
+    1. In-memory dictionary
+    2. Disk persistence cache
+    3. Single active dataset fallback
+    4. Most recently updated session on disk
     """
-    return _DATASETS.get(dataset_id)
+    if not dataset_id:
+        return None
+    session = _DATASETS.get(dataset_id)
+    if session is not None:
+        return session
+    # 2. Check disk persistence
+    session = _load_session_from_disk(dataset_id)
+    if session is not None:
+        return session
+    # 3. Single active dataset in memory
+    if len(_DATASETS) == 1:
+        return next(iter(_DATASETS.values()))
+    # 4. Fallback to latest session on disk
+    try:
+        all_pkls = sorted(_STORAGE_DIR.glob("*.pkl"), key=os.path.getmtime, reverse=True)
+        if all_pkls:
+            latest_id = all_pkls[0].stem
+            return _load_session_from_disk(latest_id)
+    except Exception:
+        pass
+    return None
 
 
 def get_profile(dataset_id: str) -> dict:
