@@ -5161,20 +5161,19 @@
   }
 
   /* Content area:
-     - On Analyst tab: full height minus topbar, zero padding so composer docks directly to bottom
-     - On other tabs: scrollable with 76px bottom clearance for the mobile bottom nav bar */
+     - On Analyst tab: exact full height between topbar (52px) and nav bar (56px), zero padding so composer docks directly to bottom
+     - On all other tabs (dataset, explore, cleaning, features, reports): natural, smooth touch scrolling with 76px bottom clearance for the mobile bottom nav bar */
   .content {
     flex: 1 1 auto !important;
     min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    overflow: hidden !important;
-    padding: 0 !important;
+    box-sizing: border-box !important;
     margin: 0 !important;
   }
 
-  .content.content-analyst,
-  .content:has(.workspace-page-analyst) {
+  /* Analyst tab only: locked viewport with internal chat scrolling */
+  .content.content-analyst {
     height: calc(100dvh - 52px - 56px) !important;
     max-height: calc(100dvh - 52px - 56px) !important;
     padding: 0 !important;
@@ -5182,16 +5181,38 @@
     overflow: hidden !important;
   }
 
-  .content:not(.content-analyst):not(:has(.workspace-page-analyst)) {
+  /* All other tabs: natural touch-smooth vertical scrolling across the entire page */
+  .content:not(.content-analyst) {
     height: calc(100dvh - 52px) !important;
     max-height: calc(100dvh - 52px) !important;
     overflow-y: auto !important;
+    overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
     padding: 12px 14px calc(76px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
+  /* ── STRICT TAB ISOLATION: Hidden workspace pages must have 0 display & 0 pointer interaction ── */
+  .workspace-page.is-hidden,
+  .content:not(.content-analyst) .workspace-page-analyst,
+  .content:not(.content-dataset) .workspace-page-dataset,
+  .content:not(.content-explore) .workspace-page-explore,
+  .content:not(.content-cleaning) .workspace-page-cleaning,
+  .content:not(.content-features) .workspace-page-features,
+  .content:not(.content-reports) .workspace-page-reports {
+    display: none !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    opacity: 0 !important;
+  }
+
   /* ── AI ANALYST TAB: Exact Full Height Between Topbar (52px) and Nav Bar (56px) ── */
-  .workspace-page-analyst {
+  .content.content-analyst .workspace-page-analyst {
     height: 100% !important;
     max-height: 100% !important;
     margin: 0 !important;
@@ -5200,6 +5221,16 @@
     display: flex !important;
     flex-direction: column !important;
     padding: 0 !important;
+  }
+
+  /* Non-analyst active pages fill width and scroll smoothly within content container */
+  .content:not(.content-analyst) .workspace-page:not(.is-hidden) {
+    width: 100% !important;
+    height: auto !important;
+    min-height: min-content !important;
+    overflow: visible !important;
+    display: block !important;
+    contain: none !important;
   }
 
   .analyst-workspace {

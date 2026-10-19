@@ -871,6 +871,13 @@ function Workspace(props) {
   } = props
 
   const [visitedPages, setVisitedPages] = useState(() => new Set(['analyst', page || 'dataset']))
+  const [cleaningScanData, setCleaningScanData] = useState(null)
+  const [cleaningResult, setCleaningResult] = useState(null)
+
+  useEffect(() => {
+    setCleaningScanData(null)
+    setCleaningResult(null)
+  }, [dataset?.dataset_id])
 
   useEffect(() => {
     setVisitedPages((prev) => {
@@ -914,22 +921,22 @@ function Workspace(props) {
 
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  // Auto-land into Fullscreen on AI Analyst for the VERY FIRST TIME ONLY
+  // Auto-land into Fullscreen on AI Analyst for desktop ONLY on VERY FIRST TIME
   useEffect(() => {
-    if (page === 'analyst' && !analystFirstAutoApplied) {
+    if (!isMobileScreen && page === 'analyst' && !analystFirstAutoApplied) {
       setIsFullscreen(true)
       setSidebarOpen(false)
       setAnalystFirstAutoApplied(true)
       try { sessionStorage.setItem('argus-analyst-autofullscreen-applied', 'true') } catch {}
     }
-  }, [page, analystFirstAutoApplied])
+  }, [page, analystFirstAutoApplied, isMobileScreen])
 
-  // When switching pages: all other sections exit fullscreen instantly without OS display lag
+  // When switching pages or on mobile: exit fullscreen instantly without OS display lag
   useEffect(() => {
-    if (page !== 'analyst') {
+    if (page !== 'analyst' || isMobileScreen) {
       setIsFullscreen(false)
     }
-  }, [page])
+  }, [page, isMobileScreen])
 
   // Sidebar visibility:
   // Statically open when sidebarOpen is true.
@@ -1048,12 +1055,20 @@ function Workspace(props) {
     if (isMobileScreen) {
       setSidebarOpen(false)
     }
+    // Instantly scroll content container to top on tab switch
+    requestAnimationFrame(() => {
+      const contentEl = document.querySelector('.content')
+      if (contentEl) contentEl.scrollTop = 0
+      const mainEl = document.querySelector('.main-area')
+      if (mainEl) mainEl.scrollTop = 0
+      window.scrollTo(0, 0)
+    })
   }
 
   return (
     <div className={`app-shell workspace-shell ${isSidebarVisible ? 'sidebar-active' : ''} ${isTopbarHidden ? 'topbar-hidden' : ''} ${isFullscreen ? 'immersive-fullscreen' : ''}`}>
-      {/* Immersive Fullscreen HUD pill */}
-      {isFullscreen && (
+      {/* Immersive Fullscreen HUD pill (desktop only) */}
+      {!isMobileScreen && isFullscreen && (
         <button
           type="button"
           className="fullscreen-esc-pill"
@@ -1321,38 +1336,34 @@ function Workspace(props) {
         )}
 
         <div className={`content content-${page}`}>
-          <div
-            className="workspace-page workspace-page-analyst"
-            style={{ display: page === 'analyst' ? undefined : 'none' }}
-          >
-            <AnalystPage
-              dataset={dataset}
-              profile={profile}
-              messages={messages}
-              draft={draft}
-              setDraft={setDraft}
-              sendMessage={sendMessage}
-              busy={busy}
-              analysis={analysis}
-              setAnalysis={setAnalysis}
-              recentAnalyses={recentAnalyses}
-              triggerReportGeneration={triggerReportGeneration}
-              onUpload={onUpload}
-              onDemo={onDemo}
-              setPage={setPage}
-              beginnerMode={beginnerMode}
-              verboseMode={verboseMode}
-              setVerboseMode={setVerboseMode}
-              isFullscreen={isFullscreen}
-              toggleFullscreen={toggleFullscreen}
-            />
-          </div>
+          {page === 'analyst' && (
+            <div className="workspace-page workspace-page-analyst active">
+              <AnalystPage
+                dataset={dataset}
+                profile={profile}
+                messages={messages}
+                draft={draft}
+                setDraft={setDraft}
+                sendMessage={sendMessage}
+                busy={busy}
+                analysis={analysis}
+                setAnalysis={setAnalysis}
+                recentAnalyses={recentAnalyses}
+                triggerReportGeneration={triggerReportGeneration}
+                onUpload={onUpload}
+                onDemo={onDemo}
+                setPage={setPage}
+                beginnerMode={beginnerMode}
+                verboseMode={verboseMode}
+                setVerboseMode={setVerboseMode}
+                isFullscreen={isFullscreen}
+                toggleFullscreen={toggleFullscreen}
+              />
+            </div>
+          )}
 
-          <div
-            className="workspace-page workspace-page-dataset"
-            style={{ display: page === 'dataset' ? undefined : 'none' }}
-          >
-            {visitedPages.has('dataset') && (
+          {page === 'dataset' && (
+            <div className="workspace-page workspace-page-dataset active">
               <DatasetPage
                 dataset={dataset}
                 profile={profile}
@@ -1362,14 +1373,11 @@ function Workspace(props) {
                 onUpload={onUpload}
                 onDemo={onDemo}
               />
-            )}
-          </div>
+            </div>
+          )}
 
-          <div
-            className="workspace-page workspace-page-explore"
-            style={{ display: page === 'explore' ? undefined : 'none' }}
-          >
-            {visitedPages.has('explore') && (
+          {page === 'explore' && (
+            <div className="workspace-page workspace-page-explore active">
               <ExplorePage
                 dataset={dataset}
                 profile={profile}
@@ -1384,38 +1392,33 @@ function Workspace(props) {
                 sendMessage={sendMessage}
                 triggerReportGeneration={triggerReportGeneration}
               />
-            )}
-          </div>
+            </div>
+          )}
 
-          <div
-            className="workspace-page workspace-page-cleaning"
-            style={{ display: page === 'cleaning' ? undefined : 'none' }}
-          >
-            {visitedPages.has('cleaning') && (
+          {page === 'cleaning' && (
+            <div className="workspace-page workspace-page-cleaning active">
               <CleaningPage
                 dataset={dataset}
                 setError={setError}
                 setToast={setToast}
                 onUpload={onUpload}
                 onDemo={onDemo}
+                scanData={cleaningScanData}
+                setScanData={setCleaningScanData}
+                cleaningResult={cleaningResult}
+                setCleaningResult={setCleaningResult}
               />
-            )}
-          </div>
+            </div>
+          )}
 
-          <div
-            className="workspace-page workspace-page-features"
-            style={{ display: page === 'features' ? undefined : 'none' }}
-          >
-            {visitedPages.has('features') && (
+          {page === 'features' && (
+            <div className="workspace-page workspace-page-features active">
               <FeaturesPage dataset={dataset} setError={setError} onUpload={onUpload} onDemo={onDemo} />
-            )}
-          </div>
+            </div>
+          )}
 
-          <div
-            className="workspace-page workspace-page-reports"
-            style={{ display: page === 'reports' ? undefined : 'none' }}
-          >
-            {visitedPages.has('reports') && (
+          {page === 'reports' && (
+            <div className="workspace-page workspace-page-reports active">
               <ReportsPage
                 dataset={dataset}
                 reports={reports}
@@ -1426,8 +1429,8 @@ function Workspace(props) {
                 onUpload={onUpload}
                 onDemo={onDemo}
               />
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </main>
 
@@ -3564,9 +3567,23 @@ function ExplorePage({
 }
 
 // ── 4. DATA CLEANING PAGE ─────────────────────────────────────────────────
-function CleaningPage({ dataset, setError, setToast, onUpload, onDemo }) {
-  const [scanData, setScanData] = useState(null)
-  const [cleaningResult, setCleaningResult] = useState(null)
+function CleaningPage({
+  dataset,
+  setError,
+  setToast,
+  onUpload,
+  onDemo,
+  scanData: propScanData,
+  setScanData: propSetScanData,
+  cleaningResult: propCleaningResult,
+  setCleaningResult: propSetCleaningResult,
+}) {
+  const [localScanData, setLocalScanData] = useState(null)
+  const [localCleaningResult, setLocalCleaningResult] = useState(null)
+  const scanData = propScanData !== undefined ? propScanData : localScanData
+  const setScanData = propSetScanData || setLocalScanData
+  const cleaningResult = propCleaningResult !== undefined ? propCleaningResult : localCleaningResult
+  const setCleaningResult = propSetCleaningResult || setLocalCleaningResult
   const [busy, setBusy] = useState(false)
 
   if (!dataset) return <EmptyState onUpload={onUpload} onDemo={onDemo} />

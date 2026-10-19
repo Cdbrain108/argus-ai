@@ -4363,6 +4363,19 @@ select[multiple] { min-height: 44px; }
   contain: layout style;
   animation: workspace-page-in 90ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+.workspace-page.is-hidden {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  opacity: 0 !important;
+}
+
 .workspace-page > .workspace > * {
   /* Eliminate staggered delayed transforms that cause lag on tab switch */
 }
@@ -6350,7 +6363,7 @@ select {
 }
 
 /* Non-analyst pages in Fullscreen mode scroll smoothly within the full window */
-.workspace-shell.immersive-fullscreen .content:not(:has(.analyst-workspace)) {
+.workspace-shell.immersive-fullscreen .content:not(.content-analyst) {
   overflow-y: auto;
   max-height: 100vh;
   padding: 16px 24px 36px;
