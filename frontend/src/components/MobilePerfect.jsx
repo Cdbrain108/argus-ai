@@ -435,7 +435,7 @@ export function MobileChartShowcase({ onDemo, onEnter }) {
       bullets: [
         '✦ Mathematical citations for every sentence',
         '✦ Prescriptive next steps for business analysts',
-        '✦ Exportable PDF reports & Python scripts',
+        '✦ High-resolution data exports & Python scripts',
       ],
       color: '#7F77DD',
     },

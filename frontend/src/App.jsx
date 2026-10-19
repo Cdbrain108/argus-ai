@@ -16,8 +16,6 @@ import {
   Crosshair,
   Database,
   Download,
-  FileDown,
-  FileText,
   Filter,
   HelpCircle,
   Info,
@@ -80,7 +78,6 @@ const NAV = [
   { id: 'explore', label: 'Explore', icon: LineChart },
   { id: 'cleaning', label: 'Data Cleaning', icon: Wrench },
   { id: 'features', label: 'Feature Discovery', icon: BrainCircuit },
-  { id: 'reports', label: 'Reports', icon: FileText },
 ]
 
 const PAGE_NUMBERS = {
@@ -89,7 +86,6 @@ const PAGE_NUMBERS = {
   explore: '03',
   cleaning: '04',
   features: '05',
-  reports: '06',
 }
 
 /* Mirrors `_ALLOWED_SUFFIXES` in backend/api/datasets.py. The loader sniffs the
@@ -167,7 +163,6 @@ function App() {
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
   const [analysis, setAnalysis] = useState(null)
-  const [reports, setReports] = useState([])
   const [showSettings, setShowSettings] = useState(false)
   const [beginnerMode, setBeginnerMode] = useState(() => localStorage.getItem('argus-beginner') === 'true')
   const [verboseMode, setVerboseMode] = useState(() => {
@@ -463,12 +458,6 @@ function App() {
   }, [dataset])
 
   useEffect(() => {
-    if (page === 'reports') {
-      api.getReports().then(setReports).catch((e) => setError(e.message))
-    }
-  }, [page])
-
-  useEffect(() => {
     localStorage.setItem('argus-beginner', String(beginnerMode))
   }, [beginnerMode])
 
@@ -678,21 +667,7 @@ function App() {
     setChatSessions((prev) => prev.filter((s) => s.id !== id))
   }
 
-  async function triggerReportGeneration() {
-    if (!dataset) return
-    setBusy(true)
-    setError('')
-    try {
-      const rep = await api.generateReport(dataset.dataset_id, sessionId)
-      setReports((prev) => [rep, ...prev])
-      setToast('Complete PDF report generated successfully!')
-      setPage('reports')
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setBusy(false)
-    }
-  }
+
 
   return (
     <>
@@ -768,14 +743,11 @@ function App() {
           setToast={setToast}
           analysis={analysis}
           setAnalysis={setAnalysis}
-          reports={reports}
-          setReports={setReports}
           startNewChat={startNewChat}
           chatSessions={chatSessions}
           loadHistoricalChat={loadHistoricalChat}
           deleteHistoricalChat={deleteHistoricalChat}
           recentAnalyses={recentAnalyses}
-          triggerReportGeneration={triggerReportGeneration}
           beginnerMode={beginnerMode}
           setBeginnerMode={setBeginnerMode}
           verboseMode={verboseMode}
@@ -858,14 +830,11 @@ function Workspace(props) {
     setToast,
     analysis,
     setAnalysis,
-    reports,
-    setReports,
     startNewChat,
     chatSessions,
     loadHistoricalChat,
     deleteHistoricalChat,
     recentAnalyses,
-    triggerReportGeneration,
     beginnerMode,
     setBeginnerMode,
     verboseMode,
@@ -1356,7 +1325,6 @@ function Workspace(props) {
                 analysis={analysis}
                 setAnalysis={setAnalysis}
                 recentAnalyses={recentAnalyses}
-                triggerReportGeneration={triggerReportGeneration}
                 onUpload={onUpload}
                 onDemo={onDemo}
                 setPage={setPage}
@@ -1397,7 +1365,6 @@ function Workspace(props) {
                 beginnerMode={beginnerMode}
                 setPage={setPage}
                 sendMessage={sendMessage}
-                triggerReportGeneration={triggerReportGeneration}
               />
             </div>
           )}
@@ -1424,20 +1391,7 @@ function Workspace(props) {
             </div>
           )}
 
-          {page === 'reports' && (
-            <div className="workspace-page workspace-page-reports active">
-              <ReportsPage
-                dataset={dataset}
-                reports={reports}
-                setReports={setReports}
-                triggerReportGeneration={triggerReportGeneration}
-                busy={busy}
-                setError={setError}
-                onUpload={onUpload}
-                onDemo={onDemo}
-              />
-            </div>
-          )}
+
         </div>
       </main>
 
@@ -1824,7 +1778,6 @@ function AnalystPage(props) {
     analysis,
     setAnalysis,
     recentAnalyses,
-    triggerReportGeneration,
     onUpload,
     setPage,
     beginnerMode,
@@ -2039,7 +1992,6 @@ function AnalystPage(props) {
                         handleSend(`Explain this finding in more detail: ${message.result.title}`)
                       }
                       onExplore={() => setPage('explore')}
-                      onGenerateReport={triggerReportGeneration}
                       beginnerMode={beginnerMode}
                     />
                   )}
@@ -2287,16 +2239,7 @@ function AnalystPage(props) {
             </div>
           )}
 
-          {/* Dedicated Pinned Footer Action */}
-          <div className="analyst-panel-footer">
-            <button
-              className="primary-button analyst-report-btn"
-              onClick={triggerReportGeneration}
-              disabled={busy}
-            >
-              <FileText size={15} /> Generate Complete PDF Report
-            </button>
-          </div>
+
         </aside>
       )}
       </div>
@@ -2313,7 +2256,6 @@ function AnalysisResultCard({
   result,
   onExplainFurther,
   onExplore,
-  onGenerateReport,
   beginnerMode,
   hideHeader = false,
   onSelectColumn,
@@ -2548,9 +2490,6 @@ function AnalysisResultCard({
         </button>
         <button type="button" className="action-pill-btn" onClick={onExplore}>
           <LineChart size={14} /> Compare Bivariate
-        </button>
-        <button type="button" className="action-pill-btn" onClick={onGenerateReport}>
-          <FileText size={14} /> Add to Complete Report
         </button>
       </div>
     </div>
@@ -2918,7 +2857,6 @@ function ExplorePage({
   beginnerMode,
   setPage,
   sendMessage,
-  triggerReportGeneration,
 }) {
   const [tab, setTab] = useState('overview')
   const [colA, setColA] = useState('')
@@ -3563,9 +3501,6 @@ function ExplorePage({
             onExplore={() => {
               setTab(tab === 'univariate' ? 'bivariate' : 'univariate')
             }}
-            onGenerateReport={() => {
-              triggerReportGeneration?.()
-            }}
           />
         </div>
       )}
@@ -3880,71 +3815,7 @@ function FeaturesPage({ dataset, setError, onUpload, onDemo }) {
   )
 }
 
-// ── 6. REPORTS PAGE ───────────────────────────────────────────────────────
-function ReportsPage({ dataset, reports, setReports, triggerReportGeneration, busy, setError, onUpload, onDemo }) {
-  if (!dataset) return <EmptyState onUpload={onUpload} onDemo={onDemo} />
 
-  return (
-    <section className="workspace">
-      <PageTitle
-        eyebrow="REPORTS"
-        title="Complete Data Analysis Reports"
-        subtitle="Consolidated multi-page executive PDF reports with real visualizations and statistics."
-      />
-
-      <div className="report-hero-card">
-        <div className="report-hero-copy">
-          <span className="eyebrow">EXECUTIVE OUTPUT</span>
-          <h2>One polished narrative for every decision-maker.</h2>
-          <p>Bundle the session’s grounded findings, charts, health signals, and recommendations into a hand-off ready PDF.</p>
-        </div>
-        <div className="report-hero-visual" aria-hidden="true">
-          <span className="report-sheet report-sheet-back" />
-          <span className="report-sheet report-sheet-mid" />
-          <span className="report-sheet report-sheet-front"><i /><i /><i /></span>
-        </div>
-      </div>
-
-      <div className="panel action-panel">
-        <div>
-          <strong>Generate Complete Executive PDF Report</strong>
-          <p className="muted">
-            Aggregates health scoring, data cleaning audit, univariate histograms, correlation heatmaps, feature importance, and session insights into one polished PDF.
-          </p>
-        </div>
-        <button className="primary-button" onClick={triggerReportGeneration} disabled={busy}>
-          <FileText size={16} /> {busy ? 'Generating PDF...' : 'Generate Complete Report'}
-        </button>
-      </div>
-
-      <div className="report-list">
-        {reports.length === 0 ? (
-          <div className="panel muted" style={{ padding: 24, textAlign: 'center' }}>
-            No reports generated yet for this session. Click above to generate your first complete report.
-          </div>
-        ) : (
-          reports.map((report) => (
-            <div className="report-row" key={report.report_id}>
-              <div>
-                <strong>ARGUS Executive Report — {report.report_id}</strong>
-                <span>Generated: {new Date(report.created_at).toLocaleString()} · Multi-Page Executive PDF</span>
-              </div>
-              <a
-                className="action-pill-btn"
-                href={api.reportDownloadUrl(report.report_id)}
-                target="_blank"
-                rel="noreferrer"
-                title="Download PDF"
-              >
-                <FileDown size={15} /> Download PDF
-              </a>
-            </div>
-          ))
-        )}
-      </div>
-    </section>
-  )
-}
 
 // ── SETTINGS MODAL ────────────────────────────────────────────────────────
 function SettingsModal({ beginnerMode, setBeginnerMode, onClose }) {

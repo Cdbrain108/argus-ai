@@ -56,7 +56,7 @@ const STAGES = [
     color: '#378ADD',
     headline: 'Every graph explained in plain English',
     blurb: 'Ask in plain English, or just run an analysis: each chart carries its own description, written over the exact values plotted.',
-    bullets: ['A summary per graph', 'Suggested next steps', 'PDF report export'],
+    bullets: ['A summary per graph', 'Suggested next steps', 'Interactive AI insights'],
   },
 ]
 

@@ -123,7 +123,7 @@ export function WhatArgusDoesShowcase({ onEnter, onDemo }) {
       highlights: [
         'Autonomous query planning routes to deterministic statistical tools',
         'Self-correcting validator retries code errors rather than guessing',
-        'Executive PDF audit report generated with 1 click'
+        'Executive data audit & summary generated with 1 click'
       ],
       engineBadge: 'LangGraph StateGraph v0.2 · Grounded Construction',
       proof: '0 Hallucinations: every token traced to Python output'

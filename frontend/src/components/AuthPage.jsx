@@ -208,7 +208,7 @@ export default function AuthPage({
             </h1>
 
             <p className="auth-value-desc">
-              Sign in with Firebase or Google to access your dataset sessions, export publication-grade reports, and query your data in plain English.
+              Sign in with Firebase or Google to access your dataset sessions, export publication-grade visualizations, and query your data in plain English.
             </p>
 
             <div className="auth-feature-list">
