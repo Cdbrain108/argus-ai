@@ -172,9 +172,9 @@ function App() {
   const [beginnerMode, setBeginnerMode] = useState(() => localStorage.getItem('argus-beginner') === 'true')
   const [verboseMode, setVerboseMode] = useState(() => {
     try {
-      return localStorage.getItem('argus-verbose-mode') !== 'false'
+      return localStorage.getItem('argus-verbose-mode') === 'true'
     } catch {
-      return true
+      return false
     }
   })
   const [recentAnalyses, setRecentAnalyses] = useState([])
@@ -1686,13 +1686,9 @@ function ReasoningProgressTicker() {
   )
 }
 
-function VerboseExecutionDropdown({ steps, trace, defaultExpanded = true }) {
-  const [open, setOpen] = useState(defaultExpanded)
+function VerboseExecutionDropdown({ steps, trace, defaultExpanded = false }) {
+  const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
-
-  useEffect(() => {
-    setOpen(defaultExpanded)
-  }, [defaultExpanded])
 
   if (!steps || steps.length === 0) return null
 
@@ -1838,6 +1834,10 @@ function AnalystPage(props) {
   const isMobileScreen = useMediaQuery('(max-width: 860px)')
   const [mobileTab, setMobileTab] = useState('chat') // 'chat' | 'schema'
   const textareaRef = useRef(null)
+
+  useEffect(() => {
+    setContextTab('schema')
+  }, [dataset?.dataset_id])
 
   useEffect(() => {
     if (draft && draft !== localDraft) {
@@ -2018,7 +2018,7 @@ function AnalystPage(props) {
                     <VerboseExecutionDropdown
                       steps={message.status_steps}
                       trace={message.verbose_trace}
-                      defaultExpanded={verboseMode}
+                      defaultExpanded={false}
                     />
                   )}
 

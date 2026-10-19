@@ -214,7 +214,7 @@ nav { display: grid; gap: 3px; }
   overflow: hidden;
 }
 .chat-messages { padding: 24px; overflow-y: auto; flex: 1; min-height: 0; }
-.starter { min-height: 420px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; text-align: center; color: var(--text-muted); }
+.starter { min-height: 0; height: 100%; flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; text-align: center; color: var(--text-muted); }
 .starter strong { color: var(--text); font-size: 19px; font-weight: 700; }
 .starter span { max-width: 440px; font-size: 13px; line-height: 1.6; }
 .suggestions { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-top: 10px; }
@@ -6206,23 +6206,36 @@ select {
    Full Screen Immersive Mode & Dynamic Layout Engine
    ========================================================================== */
 
-/* 1. Dynamic AI Analyst Workspace (Auto-fits viewport perfectly with no window scrollbar) */
+/* 1. Dynamic AI Analyst Workspace (Auto-fits viewport perfectly with zero bottom dead space) */
+.content.content-analyst {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: calc(100vh - 56px);
+  max-height: calc(100vh - 56px);
+  padding: 10px 24px 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
 .workspace-page-analyst {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  height: calc(100dvh - 110px);
-  max-height: calc(100dvh - 110px);
+  height: 100%;
+  max-height: 100%;
   overflow: hidden;
 }
 
 .workspace.analyst-workspace {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   height: 100%;
+  max-height: 100%;
   gap: 8px;
   overflow: hidden;
 }
@@ -6249,9 +6262,10 @@ select {
 }
 
 .analyst-workspace .chat-layout {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   height: 100%;
+  max-height: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 350px;
   gap: 14px;
@@ -6259,9 +6273,21 @@ select {
   overflow: hidden;
 }
 
+.analyst-workspace .chat-panel,
+.analyst-workspace .analyst-dataset-inspector {
+  height: 100%;
+  max-height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 /* 2. Topbar Auto-Hide Adjustment */
 .workspace-shell.topbar-hidden .workspace-page-analyst {
-  height: calc(var(--vh, 1vh) * 100 - 32px);
+  height: 100%;
+  max-height: 100%;
 }
 
 /* 3. Immersive Fullscreen Mode (Whole Screen Layout) */
@@ -6337,17 +6363,31 @@ select {
   overflow: hidden;
 }
 
+.workspace-shell.immersive-fullscreen .content.content-analyst {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  padding: 10px 18px 12px !important;
+  overflow: hidden !important;
+}
+
 .workspace-shell.immersive-fullscreen .workspace-page-analyst {
-  height: 100%;
-  flex: 1;
-  min-height: 0;
+  height: 100% !important;
+  max-height: 100% !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
 }
 
 .workspace-shell.immersive-fullscreen .analyst-workspace {
-  height: 100%;
-  flex: 1;
-  min-height: 0;
-  gap: 8px;
+  height: 100% !important;
+  max-height: 100% !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  gap: 8px !important;
 }
 
 /* In fullscreen mode, collapse bulky hero heading to give 100% space to the analytical workflow */
@@ -6356,10 +6396,19 @@ select {
 }
 
 .workspace-shell.immersive-fullscreen .analyst-workspace .chat-layout {
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  grid-template-columns: minmax(0, 1fr) 370px;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  grid-template-columns: minmax(0, 1fr) 370px !important;
+}
+
+.workspace-shell.immersive-fullscreen .analyst-workspace .chat-panel,
+.workspace-shell.immersive-fullscreen .analyst-workspace .analyst-dataset-inspector {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
 }
 
 /* Non-analyst pages in Fullscreen mode scroll smoothly within the full window */
