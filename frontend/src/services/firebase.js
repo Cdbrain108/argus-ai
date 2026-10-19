@@ -115,6 +115,12 @@ export const signInWithGoogle = async () => {
     if (err.code === 'auth/popup-closed-by-user') {
       return { user: null, error: 'Sign-in window closed before completion.' }
     }
+    if (err.code === 'auth/unauthorized-domain') {
+      return {
+        user: null,
+        error: 'Domain not authorized for Google Sign-In yet. Please add "argus-eda.web.app" to Firebase Console > Authentication > Settings > Authorized Domains. (You can also sign in with email/password or use the guest demos below in the meantime!)',
+      }
+    }
     return { user: null, error: err.message || 'Google sign-in failed.' }
   }
 }

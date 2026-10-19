@@ -562,11 +562,18 @@ function App() {
     const userMsg = { role: 'user', content: text, timestamp: new Date().toLocaleTimeString() }
     setMessages((prev) => [...prev, userMsg])
 
+    // Extract recent conversation history (last 10 turns) to feed into the AI analyst
+    const chatHistory = messages.slice(-10).map((m) => ({
+      role: m.role || 'user',
+      content: typeof m.content === 'string' ? m.content : (m.content?.text || ''),
+    }))
+
     try {
       const response = await api.sendChat({
         dataset_id: dataset?.dataset_id || null,
         session_id: sessionId,
         message: text,
+        history: chatHistory,
       })
 
       if (response.session_id) {

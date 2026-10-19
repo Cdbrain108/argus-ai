@@ -39,6 +39,11 @@ def build_report_payload(dataset_id: str | None) -> dict:
             return data
         df = session.cleaned_df if session.cleaned_df is not None else session.df
         data["eda"] = run_eda(df)
+        data["eda"]["missing_pct_per_col"] = {
+            col: round(float(df[col].isnull().mean() * 100), 2)
+            for col in df.columns
+            if df[col].isnull().sum() > 0
+        }
         data["health"] = compute_dataset_health(df)
         data["cleaning_scan"] = scan_dataset(session.df)
         data["univariate"] = run_univariate_analysis(df, list(df.columns[:10]))
@@ -50,6 +55,41 @@ def build_report_payload(dataset_id: str | None) -> dict:
             data["feature_discovery"] = {
                 "error": "No suitable prediction target was detected in this dataset."
             }
+        # Column typing & overview
+        data["column_types"] = getattr(session, "column_types", {}) or {}
+
+        # AI narrative description of the dataset
+        narr = getattr(session, "narrative", None)
+        if not narr:
+            try:
+                from backend.services.narration import narrate_dataset
+                narr = narrate_dataset(session)
+                session.narrative = narr
+            except Exception:
+                narr = None
+        data["narrative"] = narr
+
+        # Bivariate analysis for top correlated relationship
+        biv_data = None
+        corr = data.get("correlation", {})
+        pairs = corr.get("pairs", [])
+        if pairs:
+            from backend.analysis.adapters import run_bivariate_analysis
+            top_pair = pairs[0]
+            col_a, col_b = top_pair.get("col_a"), top_pair.get("col_b")
+            if col_a in df.columns and col_b in df.columns:
+                try:
+                    biv_data = run_bivariate_analysis(df, col_a, col_b)
+                except Exception:
+                    biv_data = None
+        if not biv_data and len(df.columns) >= 2:
+            try:
+                from backend.analysis.adapters import run_bivariate_analysis
+                biv_data = run_bivariate_analysis(df, df.columns[0], df.columns[1])
+            except Exception:
+                biv_data = None
+        data["bivariate"] = biv_data
+
         data["history"] = session.analysis_history
     except Exception as exc:
         data["error"] = str(exc)

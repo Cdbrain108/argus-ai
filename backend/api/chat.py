@@ -11,6 +11,7 @@ class ChatIn(BaseModel):
     session_id: str = ""
     dataset_id: str | None = None
     message: str
+    history: list[dict] = []
 
 
 @router.post("/chat")
@@ -46,7 +47,9 @@ def chat_endpoint(payload: ChatIn):
     try:
         orch = AgentOrchestrator()
         session = ss.get_or_create(payload.session_id or None, ds_id)
-        result = orch.handle_query(ds_id, payload.message, session.history, session.session_id)
+        # Use conversation history passed by client, fallback to server session history
+        active_history = payload.history if payload.history else session.history
+        result = orch.handle_query(ds_id, payload.message, active_history, session.session_id)
         # Ensure session_id and dataset_id are always returned
         if isinstance(result, dict):
             result.setdefault("session_id", session.session_id)

@@ -561,9 +561,20 @@ def sandbox_code_node(state: AnalystState) -> Dict[str, Any]:
             col_details.append(f"- `{c}` ({dtype}): distinct={df[c].nunique()}, samples={top_vals}")
     schema_block = "\n".join(col_details)
 
+    # Format recent conversation history so multi-turn references are fully understood
+    history_lines = []
+    if history:
+        for turn in history[-6:]:
+            r = turn.get("role", "user")
+            c = (turn.get("content") or "").strip()
+            if c:
+                history_lines.append(f"{r.capitalize()}: {c[:220]}")
+    history_ctx = ("\nRecent Conversation History:\n" + "\n".join(history_lines) + "\n\n") if history_lines else ""
+
     prompt = (
         f"You are an expert Python data analyst and data engineer. Write safe, production-grade pandas/numpy code to execute the user's request on `df`:\n"
         f"Request: \"{question}\"\n\n"
+        f"{history_ctx}"
         f"Columns and Schema:\n{schema_block}\n\n"
         f"All Columns: {list(df.columns)}\n\n"
         "Guidelines:\n"
