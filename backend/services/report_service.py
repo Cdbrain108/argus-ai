@@ -57,6 +57,17 @@ def _fmt_num(val) -> str:
         return str(val) if val is not None else "—"
 
 
+def _fmt_tick(val) -> str:
+    """Format tick labels cleanly, avoiding floating point artifacts like 43.599999999999994."""
+    try:
+        f = float(val)
+        if f.is_integer():
+            return f"{int(f):,}"
+        return f"{f:.1f}"
+    except Exception:
+        return str(val)
+
+
 def _setup_fig(figsize=(8.27, 11.69)):
     """A4 portrait page in dark obsidian styling."""
     fig = plt.figure(figsize=figsize, facecolor=BG_COLOR)
@@ -257,16 +268,21 @@ def _page_dataset_overview(pdf: PdfPages, filename: str, narrative: dict | None,
     summary_pills = "   •   ".join([f"{k.capitalize()}: {v} cols" for k, v in sorted(type_counts.items())])
     ax_types.text(0.04, 0.72, summary_pills or "Standard tabular typing active", fontsize=8, color=CYAN)
 
-    col_names = list(column_types.keys())[:18]
-    y_col = 0.52
-    x_col = 0.04
-    for idx, c in enumerate(col_names):
+    col_names = list(column_types.keys())
+    max_slots = 12
+    display_cols = col_names[:max_slots]
+    for idx, c in enumerate(display_cols):
+        col_idx = idx // 4
+        row_idx = idx % 4
+        x = 0.04 + col_idx * 0.32
+        y = 0.54 - row_idx * 0.13
+        if idx == max_slots - 1 and len(col_names) > max_slots:
+            ax_types.text(x, y, f"+ {len(col_names) - max_slots + 1} more features...", fontsize=7.5, color=CYAN, style="italic")
+            break
         col_type = column_types.get(c, {}).get("logical", "")
-        ax_types.text(x_col, y_col, f"• {c} ({col_type[:4]})", fontsize=7.5, color=TEXT_MUTED)
-        y_col -= 0.14
-        if (idx + 1) % 3 == 0:
-            x_col += 0.32
-            y_col = 0.52
+        display_name = c if len(c) <= 15 else c[:13] + ".."
+        type_abbr = col_type[:4] if col_type else ""
+        ax_types.text(x, y, f"• {display_name} ({type_abbr})", fontsize=7.5, color=TEXT_MUTED)
 
     _draw_footer(fig, 2)
     pdf.savefig(fig, facecolor=BG_COLOR, bbox_inches="tight")
@@ -298,7 +314,9 @@ def _page_health_and_cleaning(pdf: PdfPages, health: dict, cleaning: dict, eda: 
             if w > 0:
                 ax_bar.text(w + 0.5, bar.get_y() + bar.get_height() / 2, f"{w:.1f}%", va="center", color=TEXT_COLOR, fontsize=8)
     else:
-        ax_bar.text(0.5, 0.5, "No missing values detected across dataset", color=GREEN, fontsize=12, ha="center", weight="bold")
+        ax_bar.set_xticks([])
+        ax_bar.set_yticks([])
+        ax_bar.text(0.5, 0.5, "✓  No missing values detected across dataset", color=GREEN, fontsize=12, ha="center", weight="bold")
 
     # Cleaning Findings Box
     ax_clean = fig.add_axes([0.10, 0.10, 0.80, 0.42])
@@ -406,12 +424,12 @@ def _page_univariate(pdf: PdfPages, univariate: dict):
             if len(labels) > 0:
                 step = max(1, len(labels) // 4)
                 ax.set_xticks(x_pos[::step])
-                ax.set_xticklabels([str(labels[i]) for i in range(0, len(labels), step)], rotation=20)
+                ax.set_xticklabels([_fmt_tick(labels[i]) for i in range(0, len(labels), step)], rotation=20)
         elif c_type == "bar" and chart.get("values"):
             values = chart.get("values", [])[:6]
             labels = chart.get("labels", [])[:6]
             ax.bar(labels, values, color=CYAN, edgecolor=CARD_COLOR, width=0.7)
-            ax.set_xticklabels(labels, rotation=25)
+            ax.set_xticklabels([str(l)[:10] for l in labels], rotation=25)
         elif c_type == "line" and chart.get("values"):
             values = chart.get("values", [])
             labels = chart.get("labels", [])
@@ -421,7 +439,7 @@ def _page_univariate(pdf: PdfPages, univariate: dict):
             if len(labels) > 0:
                 step = max(1, len(labels) // 4)
                 ax.set_xticks(x_pos[::step])
-                ax.set_xticklabels([str(labels[i]) for i in range(0, len(labels), step)], rotation=20)
+                ax.set_xticklabels([_fmt_tick(labels[i]) for i in range(0, len(labels), step)], rotation=20)
         else:
             ax.text(0.5, 0.5, "Summary Available", color=TEXT_MUTED, ha="center")
 
@@ -508,7 +526,9 @@ def _page_bivariate_and_correlation(pdf: PdfPages, corr_data: dict, bivariate: d
             r = p.get("correlation", 0.0)
             strength = p.get("strength", "")
             r_color = CYAN if r > 0 else ORANGE
-            ax_pairs.text(0.06, y, f"{col_a[:8]} ↔ {col_b[:8]}", fontsize=7.8, color=TEXT_COLOR)
+            name_a = col_a if len(col_a) <= 12 else col_a[:10] + ".."
+            name_b = col_b if len(col_b) <= 12 else col_b[:10] + ".."
+            ax_pairs.text(0.06, y, f"{name_a} ↔ {name_b}", fontsize=7.8, color=TEXT_COLOR)
             ax_pairs.text(0.06, y - 0.05, f"r = {r:+.3f} ({strength[:8]})", fontsize=7, color=r_color)
             y -= 0.15
     else:
@@ -579,7 +599,11 @@ def _page_feature_discovery(pdf: PdfPages, feat_data: dict):
     method = feat_data.get("methodology", "Random Forest Feature Importance")
 
     fig.text(0.10, 0.86, f"Analyzed Target Variable: {target}", fontsize=11, weight="bold", color=ORANGE)
-    fig.text(0.10, 0.835, f"Methodology: {method}", fontsize=8.5, color=TEXT_MUTED)
+    wrapped_method = textwrap.wrap(f"Methodology: {method}", width=95)
+    y_m = 0.835
+    for line in wrapped_method[:2]:
+        fig.text(0.10, y_m, line, fontsize=8, color=TEXT_MUTED)
+        y_m -= 0.02
 
     features = feat_data.get("features", []) or feat_data.get("feature_importance", []) or []
     if not features and isinstance(feat_data.get("importance"), dict):
@@ -708,7 +732,7 @@ def generate_report(dataset_id: str | None = None, session_id: str | None = None
             raise ValueError(f"Dataset {dataset_id} not found")
     report_id = uuid.uuid4().hex[:12]
     payload = build_report_payload(dataset_id)
-    filename = payload.get("eda", {}).get("dataset_name") or payload.get("eda", {}).get("filename") or "dataset"
+    filename = payload.get("filename") or payload.get("eda", {}).get("dataset_name") or payload.get("eda", {}).get("filename") or "dataset"
     pdf_path = _build_pdf(report_id, payload, str(filename))
     record = {
         "report_id": report_id,

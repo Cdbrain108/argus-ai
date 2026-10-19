@@ -2275,8 +2275,8 @@ def run_feature_importance(df: pd.DataFrame, target: str) -> dict:
 
     in_sample = round(float(model.score(X, y)), 4)
     cv_score = _cross_validated_score(
-        RandomForestClassifier(n_estimators=100, random_state=42) if task == "classification"
-        else RandomForestRegressor(n_estimators=100, random_state=42),
+        RFC(n_estimators=100, random_state=42) if task == "classification"
+        else RFR(n_estimators=100, random_state=42),
         X, y, task,
     )
 

@@ -38,6 +38,7 @@ def build_report_payload(dataset_id: str | None) -> dict:
         if session is None:
             return data
         df = session.cleaned_df if session.cleaned_df is not None else session.df
+        data["filename"] = session.filename or session.dataset_name or "dataset"
         data["eda"] = run_eda(df)
         data["eda"]["missing_pct_per_col"] = {
             col: round(float(df[col].isnull().mean() * 100), 2)
