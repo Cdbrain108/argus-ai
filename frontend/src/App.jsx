@@ -858,6 +858,7 @@ function Workspace(props) {
       return false
     }
   })
+  const [exploreTab, setExploreTab] = useState('overview')
 
   useEffect(() => {
     setCleaningScanData(null)
@@ -1395,6 +1396,8 @@ function Workspace(props) {
                 beginnerMode={beginnerMode}
                 setPage={setPage}
                 sendMessage={sendMessage}
+                exploreTab={exploreTab}
+                setExploreTab={setExploreTab}
               />
             </div>
           )}
@@ -1431,6 +1434,8 @@ function Workspace(props) {
             onClose={() => setShowTour(false)}
             page={page}
             setPage={setPage}
+            exploreTab={exploreTab}
+            setExploreTab={setExploreTab}
           />
         )}
       </main>
@@ -2887,44 +2892,44 @@ function ExploreSelect({ id, label, value, onChange, options }) {
 
 const CONCEPT_GUIDES = {
   overview: {
-    eyebrow: 'WHAT IS DIAGNOSTIC OVERVIEW?',
+    eyebrow: 'DIAGNOSTIC OVERVIEW',
     color: '#f97316',
     icon: SlidersHorizontal,
-    title: 'Your complete dataset health & structural audit at a glance',
-    desc: 'Before drawing individual charts, this overview counts your rows, flags missing cells, and classifies every column into numbers, categories, or dates.',
-    tip: '💡 Recommended Next Step: Check if any columns have high missing percentages, then click Univariate Distribution to inspect specific columns.',
+    title: 'High-level structure & health check',
+    desc: 'Audit row counts, column data types, and check for missing cells.',
+    tip: '💡 Tip: Review missing values before inspecting individual columns.',
   },
   univariate: {
-    eyebrow: 'WHAT IS UNIVARIATE ANALYSIS?',
+    eyebrow: 'UNIVARIATE (1 VARIABLE)',
     color: '#38bdf8',
     icon: LineChart,
-    title: 'Examining one single column at a time (“Uni” = One)',
-    desc: 'Shows how values in one column are spread out — the average, minimum, maximum, and most common numbers or categories. Helps spot extreme outliers and skewed data.',
-    tip: '💡 Recommended Next Step: Select a column from the dropdown below to see its histogram or bar chart. When done, move to Bivariate Relationship to compare pairs.',
+    title: 'Inspect one column at a time',
+    desc: 'See averages, spread, and extreme values (outliers) for any column.',
+    tip: '💡 Tip: Select a column below to see its distribution histogram or category counts.',
   },
   bivariate: {
-    eyebrow: 'WHAT IS BIVARIATE ANALYSIS?',
+    eyebrow: 'BIVARIATE (2 VARIABLES)',
     color: '#10b981',
     icon: BrainCircuit,
-    title: 'Comparing how two columns interact with each other (“Bi” = Two)',
-    desc: 'Does column A affect column B? Bivariate plots two variables together (e.g. Price vs Sales or Age vs Survival) to reveal trends, patterns, and cause-and-effect links.',
-    tip: '💡 Recommended Next Step: Pick Variable A and Variable B below, then click “Run Analysis” to plot their relationship. Check the AI Analyst for a grounded narration.',
+    title: 'Compare how two columns interact',
+    desc: 'Plot two variables together to discover correlations, patterns, and trends.',
+    tip: '💡 Tip: Select Variable A and B below, then click "Run Analysis".',
   },
   correlation: {
-    eyebrow: 'WHAT IS CORRELATION?',
+    eyebrow: 'CORRELATION MATRIX',
     color: '#a855f7',
     icon: TableIcon,
-    title: 'A heatmap showing which numeric columns rise or fall together',
-    desc: 'Measures relationship strength from -1.0 to +1.0. A score near +1 means both columns increase together; near -1 means when one goes up, the other goes down; near 0 means no link.',
-    tip: '💡 Recommended Next Step: Click “Run Correlation” to scan the full matrix. Look for deep green or blue boxes to discover the strongest predictive pairs.',
+    title: 'Full dataset relationship heatmap',
+    desc: 'Color matrix showing numeric connection strength from -1.0 to +1.0.',
+    tip: '💡 Tip: Look for deep green or blue boxes to spot the strongest predictive pairs.',
   },
   multivariate: {
-    eyebrow: 'WHAT IS MULTIVARIATE / CLUSTERING?',
+    eyebrow: 'MULTIVARIATE / CLUSTERING',
     color: '#ec4899',
     icon: Layers,
-    title: 'Finding natural customer or record groups across many variables',
-    desc: 'Instead of just looking at two columns, clustering groups rows that share similar patterns across all columns (e.g., grouping customers by purchasing habits).',
-    tip: '💡 Recommended Next Step: Select a target column or keep Auto to let Argus find natural clusters in your dataset.',
+    title: 'Group records into natural clusters',
+    desc: 'Find natural groupings across multiple columns without manual rules.',
+    tip: '💡 Tip: Select a target column or keep Auto to discover customer/record segments.',
   },
 }
 
@@ -2938,7 +2943,7 @@ function ExploreConceptGuide({ tab }) {
   return (
     <div className="explore-concept-guide" style={{ '--guide-color': guide.color }}>
       <div className="explore-concept-icon">
-        <Icon size={18} />
+        <Icon size={16} />
       </div>
       <div className="explore-concept-text">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
@@ -2956,14 +2961,14 @@ function ExploreConceptGuide({ tab }) {
               textDecoration: 'underline',
             }}
           >
-            {minimized ? 'Explain this tool' : 'Hide explanation'}
+            {minimized ? 'Explain tool' : 'Hide'}
           </button>
         </div>
         <h4 className="explore-concept-title">{guide.title}</h4>
         {!minimized && (
           <>
             <p className="explore-concept-desc">{guide.desc}</p>
-            <div style={{ marginTop: '6px', fontSize: '11.5px', color: '#f1f5f9', opacity: 0.9 }}>
+            <div style={{ marginTop: '4px', fontSize: '11px', color: '#f1f5f9', opacity: 0.9 }}>
               {guide.tip}
             </div>
           </>
@@ -2985,8 +2990,15 @@ function ExplorePage({
   beginnerMode,
   setPage,
   sendMessage,
+  exploreTab,
+  setExploreTab,
 }) {
-  const [tab, setTab] = useState('overview')
+  const [localTab, setLocalTab] = useState('overview')
+  const tab = exploreTab || localTab
+  const setTab = (newTab) => {
+    setLocalTab(newTab)
+    if (setExploreTab) setExploreTab(newTab)
+  }
   const [colA, setColA] = useState('')
   const [colB, setColB] = useState('')
   const [aggregation, setAggregation] = useState('auto')

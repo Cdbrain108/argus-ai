@@ -11,76 +11,76 @@ import {
   BrainCircuit,
   Bot,
   Wrench,
-  HelpCircle,
   ChevronRight,
   Minimize2,
   Maximize2,
+  Check,
 } from 'lucide-react'
 
 export const TOUR_STEPS = [
   {
     step: 1,
     id: 'dataset',
-    badge: 'STEP 1 OF 5 · DATASET OVERVIEW',
-    title: 'Check Your Data Health & Structure',
+    badge: 'Step 1 of 5',
+    title: 'Dataset Overview',
     icon: Database,
     color: '#38bdf8',
     targetPage: 'dataset',
-    explanation:
-      'Start here on the Dataset page! You can see total rows, columns, data types, and an automated Health Score (0–100). Argus highlights missing values and data hygiene issues before you even begin.',
-    actionLabel: 'Go to Dataset (02)',
+    targetTab: null,
+    explanation: 'Review rows, columns, and your automated 0–100 data health score.',
+    actionLabel: 'Dataset View',
   },
   {
     step: 2,
     id: 'univariate',
-    badge: 'STEP 2 OF 5 · ONE COLUMN AT A TIME',
-    title: 'Univariate: See How a Single Column Behaves',
+    badge: 'Step 2 of 5',
+    title: 'Univariate (1 Column)',
     icon: LineChart,
     color: '#f97316',
     targetPage: 'explore',
-    explanation:
-      'Univariate means analyzing ONE column at a time. Go to Explore > Univariate and select any column (like Age, Revenue, or Fare) to see where numbers bunch up, typical averages, and unusual extreme values (outliers).',
-    actionLabel: 'Go to Explore (03)',
+    targetTab: 'univariate',
+    explanation: 'Pick any single column to check its distribution, average, and outliers.',
+    actionLabel: 'Univariate',
   },
   {
     step: 3,
     id: 'bivariate',
-    badge: 'STEP 3 OF 5 · COMPARE TWO COLUMNS',
-    title: 'Bivariate: Discover How Variables Connect',
+    badge: 'Step 3 of 5',
+    title: 'Bivariate (2 Columns)',
     icon: BrainCircuit,
     color: '#c084fc',
     targetPage: 'explore',
-    explanation:
-      'Bivariate means comparing TWO columns together. Discover how one variable influences another — for example: "Does higher age mean higher spending?" or "How do sales vary across customer tiers?"',
-    actionLabel: 'Go to Bivariate (03)',
+    targetTab: 'bivariate',
+    explanation: 'Compare two columns to see how they influence and connect with each other.',
+    actionLabel: 'Bivariate',
   },
   {
     step: 4,
     id: 'analyst',
-    badge: 'STEP 4 OF 5 · TALK IN PLAIN ENGLISH',
-    title: 'AI Analyst: Ask Questions in Everyday Words',
+    badge: 'Step 4 of 5',
+    title: 'AI Analyst Chat',
     icon: Bot,
     color: '#10b981',
     targetPage: 'analyst',
-    explanation:
-      'Ask anything in plain English! Try "What is this dataset about?" or "Which factors affect outcomes?". The AI runs real Python statistical code and gives you verified, grounded explanations with zero jargon.',
-    actionLabel: 'Go to AI Analyst (01)',
+    targetTab: null,
+    explanation: 'Ask questions in plain English — answered with verified Python statistics.',
+    actionLabel: 'AI Analyst',
   },
   {
     step: 5,
     id: 'cleaning-features',
-    badge: 'STEP 5 OF 5 · CLEAN & DISCOVER DRIVERS',
-    title: 'Clean Messy Data & Rank Top ML Drivers',
+    badge: 'Step 5 of 5',
+    title: 'Cleaning & ML Drivers',
     icon: Wrench,
     color: '#fbbf24',
     targetPage: 'cleaning',
-    explanation:
-      'Use Data Cleaning (04) to repair missing numbers or drop duplicates with 1 click. Then visit Feature Discovery (05) to let machine learning rank the most influential columns predicting your goal!',
-    actionLabel: 'Go to Cleaning (04)',
+    targetTab: null,
+    explanation: 'Fix missing cells in 1 click, or rank your top predictive drivers.',
+    actionLabel: 'Data Cleaning',
   },
 ]
 
-export default function WorkspaceTour({ page, setPage, isOpen, onClose }) {
+export default function WorkspaceTour({ page, setPage, exploreTab, setExploreTab, isOpen, onClose }) {
   const [currentStepIdx, setCurrentStepIdx] = useState(0)
   const [isMinimized, setIsMinimized] = useState(false)
 
@@ -88,34 +88,40 @@ export default function WorkspaceTour({ page, setPage, isOpen, onClose }) {
   const isLast = currentStepIdx === TOUR_STEPS.length - 1
   const isFirst = currentStepIdx === 0
 
+  // Check if user is currently on the step's page & tab
+  const isCurrentlyOnStep =
+    page === currentStep.targetPage &&
+    (!currentStep.targetTab || exploreTab === currentStep.targetTab)
+
+  // Navigate both workspace page and sub-tab properly
+  const navigateToStep = (idx) => {
+    const s = TOUR_STEPS[idx]
+    if (!s) return
+    setCurrentStepIdx(idx)
+    if (s.targetPage && setPage) {
+      setPage(s.targetPage)
+    }
+    if (s.targetTab && setExploreTab) {
+      setExploreTab(s.targetTab)
+    }
+  }
+
   const handleNext = () => {
     if (isLast) {
       handleComplete()
     } else {
-      const nextIdx = currentStepIdx + 1
-      setCurrentStepIdx(nextIdx)
-      const nextTarget = TOUR_STEPS[nextIdx].targetPage
-      if (nextTarget && setPage) {
-        setPage(nextTarget)
-      }
+      navigateToStep(currentStepIdx + 1)
     }
   }
 
   const handlePrev = () => {
     if (!isFirst) {
-      const prevIdx = currentStepIdx - 1
-      setCurrentStepIdx(prevIdx)
-      const prevTarget = TOUR_STEPS[prevIdx].targetPage
-      if (prevTarget && setPage) {
-        setPage(prevTarget)
-      }
+      navigateToStep(currentStepIdx - 1)
     }
   }
 
   const handleJump = () => {
-    if (currentStep.targetPage && setPage) {
-      setPage(currentStep.targetPage)
-    }
+    navigateToStep(currentStepIdx)
   }
 
   const handleComplete = () => {
@@ -127,21 +133,26 @@ export default function WorkspaceTour({ page, setPage, isOpen, onClose }) {
 
   if (!isOpen) return null
 
-  // Floating Minimized Pill
+  // Floating Minimized Pill at top-right
   if (isMinimized) {
     return (
-      <aside aria-label="Guided Tour Minimized" className="workspace-tour-minimized" onClick={() => setIsMinimized(false)}>
-        <Compass size={16} className="tour-spin-icon" color="var(--orange)" />
+      <aside
+        aria-label="Guided Tour Minimized"
+        className="workspace-tour-minimized"
+        onClick={() => setIsMinimized(false)}
+        title="Click to expand guided walkthrough"
+      >
+        <Compass size={14} className="tour-spin-icon" color="var(--orange)" />
         <span className="tour-min-text">
-          Guided Tour: Step {currentStep.step} of 5
+          Guide {currentStep.step}/5: {currentStep.title}
         </span>
         <button
           type="button"
           className="tour-min-expand"
-          title="Expand guided walkthrough"
-          aria-label="Expand guided walkthrough"
+          title="Expand guide"
+          aria-label="Expand guide"
         >
-          <Maximize2 size={13} />
+          <Maximize2 size={12} />
         </button>
       </aside>
     )
@@ -160,11 +171,14 @@ export default function WorkspaceTour({ page, setPage, isOpen, onClose }) {
           />
         </div>
 
-        {/* Header */}
+        {/* Compact Header */}
         <div className="tour-card-header">
           <div className="tour-badge-cluster">
-            <span className="tour-step-badge" style={{ color: currentStep.color, borderColor: `${currentStep.color}44`, background: `${currentStep.color}15` }}>
-              <Sparkles size={11} /> {currentStep.badge}
+            <span
+              className="tour-step-badge"
+              style={{ color: currentStep.color, borderColor: `${currentStep.color}44`, background: `${currentStep.color}15` }}
+            >
+              <Sparkles size={10} /> {currentStep.badge}
             </span>
             <span className="tour-step-dots">
               {TOUR_STEPS.map((s, idx) => (
@@ -172,12 +186,9 @@ export default function WorkspaceTour({ page, setPage, isOpen, onClose }) {
                   key={s.id}
                   type="button"
                   className={`tour-dot ${idx === currentStepIdx ? 'active' : idx < currentStepIdx ? 'completed' : ''}`}
-                  onClick={() => {
-                    setCurrentStepIdx(idx)
-                    if (s.targetPage && setPage) setPage(s.targetPage)
-                  }}
-                  title={`Go to step ${s.step}: ${s.title}`}
-                  aria-label={`Go to step ${s.step}: ${s.title}`}
+                  onClick={() => navigateToStep(idx)}
+                  title={`Step ${s.step}: ${s.title}`}
+                  aria-label={`Step ${s.step}: ${s.title}`}
                 />
               ))}
             </span>
@@ -188,27 +199,30 @@ export default function WorkspaceTour({ page, setPage, isOpen, onClose }) {
               type="button"
               className="tour-ctrl-btn"
               onClick={() => setIsMinimized(true)}
-              title="Minimize guide to corner pill"
-              aria-label="Minimize guide to corner pill"
+              title="Minimize guide to top corner"
+              aria-label="Minimize guide"
             >
-              <Minimize2 size={14} />
+              <Minimize2 size={13} />
             </button>
             <button
               type="button"
               className="tour-ctrl-btn close"
               onClick={handleComplete}
               title="Skip and close guide"
-              aria-label="Skip and close guide"
+              aria-label="Close guide"
             >
-              <X size={15} />
+              <X size={14} />
             </button>
           </div>
         </div>
 
-        {/* Content Body */}
+        {/* Crisp Body */}
         <div className="tour-card-body">
-          <div className="tour-icon-wrap" style={{ color: currentStep.color, background: `${currentStep.color}15`, borderColor: `${currentStep.color}33` }}>
-            <StepIcon size={20} />
+          <div
+            className="tour-icon-wrap"
+            style={{ color: currentStep.color, background: `${currentStep.color}15`, borderColor: `${currentStep.color}33` }}
+          >
+            <StepIcon size={16} />
           </div>
           <div className="tour-text-content">
             <h4 className="tour-step-title">{currentStep.title}</h4>
@@ -216,24 +230,25 @@ export default function WorkspaceTour({ page, setPage, isOpen, onClose }) {
           </div>
         </div>
 
-        {/* Footer Actions */}
+        {/* Compact Footer Actions */}
         <div className="tour-card-footer">
           <div className="tour-footer-left">
             <button
               type="button"
-              className="tour-jump-btn"
+              className={`tour-jump-btn ${isCurrentlyOnStep ? 'current' : ''}`}
               onClick={handleJump}
-              title="Navigate directly to this workspace view"
+              title={isCurrentlyOnStep ? "You are on this tool" : `Switch to ${currentStep.title}`}
             >
-              <span>{currentStep.actionLabel}</span>
-              <ChevronRight size={13} />
+              {isCurrentlyOnStep ? <Check size={11} /> : <ChevronRight size={11} />}
+              <span>{isCurrentlyOnStep ? 'Active View' : currentStep.actionLabel}</span>
             </button>
             <button
               type="button"
               className="tour-skip-link"
               onClick={handleComplete}
+              title="Dismiss guided tour"
             >
-              Skip guide
+              Skip
             </button>
           </div>
 
@@ -243,9 +258,9 @@ export default function WorkspaceTour({ page, setPage, isOpen, onClose }) {
                 type="button"
                 className="tour-nav-btn prev"
                 onClick={handlePrev}
-                title="Previous step"
+                title="Go to previous step"
               >
-                <ArrowLeft size={13} /> Back
+                <ArrowLeft size={11} /> Back
               </button>
             )}
             <button
@@ -253,10 +268,11 @@ export default function WorkspaceTour({ page, setPage, isOpen, onClose }) {
               className="tour-nav-btn next primary"
               onClick={handleNext}
               style={{ background: currentStep.color, borderColor: currentStep.color }}
+              title={isLast ? "Complete walkthrough" : "Go to next step"}
             >
-              <span>{isLast ? 'Got it! Explore' : 'Next Step'}</span>
-              {!isLast && <ArrowRight size={13} />}
-              {isLast && <CheckCircle2 size={13} />}
+              <span>{isLast ? 'Finish ✓' : 'Next Step'}</span>
+              {!isLast && <ArrowRight size={11} />}
+              {isLast && <CheckCircle2 size={11} />}
             </button>
           </div>
         </div>
