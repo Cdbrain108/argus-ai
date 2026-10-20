@@ -6389,3 +6389,136 @@
     font-size: 14px !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   32. COMPACT ANALYSIS DESCRIPTIONS & STATS MATRIX (Explore & AI Analyst)
+   -------------------------------------------------------------------------- */
+.extended-notes-accordion {
+  margin: 6px 0 2px !important;
+}
+
+.extended-notes-toggle-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  background: rgba(56, 189, 248, 0.08) !important;
+  border: 1px solid rgba(56, 189, 248, 0.22) !important;
+  border-radius: 6px !important;
+  padding: 4px 10px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #38bdf8 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.extended-notes-toggle-btn:hover {
+  background: rgba(56, 189, 248, 0.16) !important;
+  border-color: rgba(56, 189, 248, 0.38) !important;
+  color: #7dd3fc !important;
+}
+
+.ai-narrative-clamp-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  background: rgba(56, 189, 248, 0.12) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  color: #38bdf8 !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  padding: 2px 8px !important;
+  border-radius: 999px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.ai-narrative-clamp-btn:hover {
+  background: rgba(56, 189, 248, 0.22) !important;
+  color: #e0f2fe !important;
+  transform: translateY(-1px) !important;
+}
+
+@media (max-width: 768px) {
+  .stats-badge-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    margin: 8px 0 !important;
+  }
+
+  .stat-badge-chip {
+    padding: 6px 10px !important;
+    border-radius: 7px !important;
+    gap: 2px !important;
+    min-width: 0 !important;
+  }
+
+  .stat-chip-label {
+    font-size: 9.5px !important;
+    letter-spacing: 0.04em !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .stat-chip-val {
+    font-size: 13.5px !important;
+    line-height: 1.25 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .stat-chip-hint {
+    font-size: 8.5px !important;
+    line-height: 1.2 !important;
+  }
+
+  .ai-narrative {
+    padding: 10px 12px 11px !important;
+    gap: 6px !important;
+    margin-top: 10px !important;
+    border-radius: 9px !important;
+  }
+
+  .ai-narrative-body {
+    font-size: 12px !important;
+    line-height: 1.55 !important;
+  }
+
+  .ai-narrative .eyebrow {
+    font-size: 9.5px !important;
+  }
+
+  .explore-insights-block {
+    margin-top: 10px !important;
+    padding: 8px 12px !important;
+    border-radius: 7px !important;
+  }
+
+  .explore-insights-list {
+    margin: 5px 0 0 !important;
+    padding-left: 14px !important;
+    font-size: 11.5px !important;
+    line-height: 1.5 !important;
+  }
+
+  .explore-insights-list li {
+    margin-bottom: 3px !important;
+  }
+
+  .result-actions {
+    margin-top: 12px !important;
+    padding-top: 10px !important;
+    gap: 8px !important;
+  }
+
+  .result-actions .action-pill-btn {
+    flex: 1 1 calc(50% - 6px) !important;
+    justify-content: center !important;
+    padding: 7px 10px !important;
+    font-size: 11.5px !important;
+  }
+}
+

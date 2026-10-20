@@ -5499,12 +5499,48 @@ select {
 
   .stats-badge-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin: 8px 0;
+  }
+
+  .stat-badge-chip {
+    padding: 6px 10px;
+    border-radius: 7px;
+    gap: 2px;
+  }
+
+  .stat-chip-label {
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
+  }
+
+  .stat-chip-val {
+    font-size: 13.5px;
+    line-height: 1.25;
   }
 }
 
 @container chart-card (max-width: 360px) {
   .stats-badge-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+    margin: 6px 0;
+  }
+
+  .stat-badge-chip {
+    padding: 5px 8px;
+    border-radius: 6px;
+    gap: 1px;
+  }
+
+  .stat-chip-label {
+    font-size: 9px;
+    letter-spacing: 0.03em;
+  }
+
+  .stat-chip-val {
+    font-size: 13px;
+    line-height: 1.2;
   }
 
   .hbar-row {
@@ -5513,6 +5549,12 @@ select {
 
   .hbar-label {
     width: clamp(62px, 35%, 100px);
+  }
+}
+
+@container chart-card (max-width: 220px) {
+  .stats-badge-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

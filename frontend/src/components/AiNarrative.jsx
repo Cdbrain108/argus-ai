@@ -11,6 +11,7 @@ export default function AiNarrative({
 }) {
   const text = payload?.text || ''
   const [replayCount, setReplayCount] = useState(0)
+  const [expanded, setExpanded] = useState(false)
 
   // Natural typewriter pacing: 1 word every 26ms (~38 words/sec) with glowing cyan cursor
   // ignoreReducedMotion ensures Windows visual performance settings don't bypass animation
@@ -25,6 +26,7 @@ export default function AiNarrative({
   useEffect(() => {
     if (text) {
       replay()
+      setExpanded(false)
     }
   }, [text, replayCount])
 
@@ -57,6 +59,23 @@ export default function AiNarrative({
 
   const deterministic = payload?.source === 'deterministic'
 
+  // If text is long (> 220 chars) and compact mode is on, provide an inline toggle
+  const isLong = text.length > 220
+  const canClamp = compact && isLong && done
+
+  // When clamped, pick first sentence or clean slice ending at word boundary
+  let clampedText = text
+  if (canClamp && !expanded) {
+    const firstPeriod = text.indexOf('. ')
+    if (firstPeriod > 80 && firstPeriod < 210) {
+      clampedText = text.slice(0, firstPeriod + 1)
+    } else {
+      const slice = text.slice(0, 180)
+      const lastSpace = slice.lastIndexOf(' ')
+      clampedText = (lastSpace > 110 ? slice.slice(0, lastSpace) : slice) + '…'
+    }
+  }
+
   return (
     <div
       className={`ai-narrative${done ? ' done' : ' typing'}${size}`}
@@ -79,20 +98,35 @@ export default function AiNarrative({
               ⚡ Show Full
             </button>
           ) : (
-            <button
-              type="button"
-              className="ai-skip-btn"
-              onClick={handleReplay}
-              title="Replay typing animation"
-              style={{ opacity: 0.85 }}
-            >
-              <RotateCcw size={11} /> Replay
-            </button>
+            <>
+              {isLong && compact && (
+                <button
+                  type="button"
+                  className="ai-narrative-clamp-btn"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setExpanded((v) => !v)
+                  }}
+                  title={expanded ? 'Collapse to compact view' : 'Expand full description'}
+                >
+                  {expanded ? 'Show compact ▴' : 'Show full ▾'}
+                </button>
+              )}
+              <button
+                type="button"
+                className="ai-skip-btn"
+                onClick={handleReplay}
+                title="Replay typing animation"
+                style={{ opacity: 0.85 }}
+              >
+                <RotateCcw size={11} /> Replay
+              </button>
+            </>
           )}
         </div>
       </div>
       <p className="ai-narrative-body">
-        {typed}
+        {done && canClamp && !expanded ? clampedText : typed}
         {!done && <span className="ai-cursor" aria-hidden="true" />}
       </p>
       {done && payload?.note && <span className="ai-narrative-note">{payload.note}</span>}

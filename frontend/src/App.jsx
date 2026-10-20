@@ -2308,10 +2308,18 @@ function AnalysisResultCard({
 }) {
   if (!result) return null
 
+  const [showExtendedNotes, setShowExtendedNotes] = useState(false)
+
   const stats = result.statistics || {}
   const insights = result.insights || []
+  const ignoredKeys = new Set([
+    'column', 'col', 'columns', 'target', 'is_identifier', 'analysis_skipped',
+    'name', 'status_steps', 'sample_values', 'matrix', 'matrix_values', 'bins',
+    'feature_importance', 'top_influencers', 'clusters', 'pca_components'
+  ])
+
   const statEntries = Object.entries(stats).filter(
-    ([k, v]) => typeof v === 'number' || (typeof v === 'string' && v.length < 35)
+    ([k, v]) => !ignoredKeys.has(k) && (typeof v === 'number' || (typeof v === 'string' && v.length < 35))
   )
   const narrative = result.narrative
     || (result.explanation ? { text: result.explanation, source: 'ai' } : null)
@@ -2319,6 +2327,33 @@ function AnalysisResultCard({
   const isIdentifier = stats.is_identifier || stats.analysis_skipped === 'identifier' || stats.type === 'identifier'
     || (result.columns?.length === 1 && String(result.columns[0]).toLowerCase().endsWith('id') && stats.uniqueness_pct >= 90)
   const targetCol = result.columns?.[0] || 'Target Column'
+
+  // Pick primary narrative: prefer grounded visual chart reading if present, else analytical narrative
+  const primaryNarrative = (result.chart_narrative?.text && result.chart_narrative.text.trim().length > 0)
+    ? result.chart_narrative
+    : narrative
+
+  // Check if secondary narrative has distinct, non-duplicate information
+  const hasDistinctSecondary = Boolean(
+    primaryNarrative === result.chart_narrative &&
+    narrative?.text &&
+    narrative.text.trim().length > 0 &&
+    narrative.text.trim() !== result.chart_narrative?.text?.trim()
+  )
+
+  const formatStatVal = (key, val) => {
+    if (typeof val === 'number') {
+      const lower = key.toLowerCase()
+      if (lower.includes('pct') || lower.includes('percent') || lower.includes('rate')) {
+        return `${Number(val).toFixed(1)}%`
+      }
+      if (Number.isInteger(val)) {
+        return val.toLocaleString()
+      }
+      return Number(val).toLocaleString(undefined, { maximumFractionDigits: 2 })
+    }
+    return String(val)
+  }
 
   return (
     <div className="argus-chart-card">
@@ -2410,7 +2445,14 @@ function AnalysisResultCard({
           <p>No meaningful chart is available for this selection. Read the column findings below or choose other variables.</p>}
       </div>
 
-      <AiNarrative payload={result.chart_narrative} label="WHAT THIS GRAPH SHOWS" compact tight />
+      {/* Primary Grounded AI Narrative (Unified Description) */}
+      {primaryNarrative && (
+        <AiNarrative
+          payload={primaryNarrative}
+          label={`WHAT THIS ${(result.analysis_type || 'analysis').replaceAll('_', ' ').toUpperCase()} SHOWS`}
+          compact
+        />
+      )}
 
       {/* Resultant Transformed Dataset Banner */}
       {result.dataset_update && (
@@ -2492,14 +2534,14 @@ function AnalysisResultCard({
         </div>
       )}
 
-      {/* Numerical Stats Badges */}
+      {/* Numerical Stats Badges Matrix */}
       {statEntries.length > 0 && (
         <div className="stats-badge-grid">
           {statEntries.slice(0, 8).map(([key, val]) => (
             <div className="stat-badge-chip" key={key} title={beginnerMode ? BEGINNER_TERMS[key] : ''}>
               <span className="stat-chip-label">{key.replaceAll('_', ' ')}</span>
               <strong className="stat-chip-val">
-                {typeof val === 'number' ? Number(val).toFixed(val % 1 !== 0 ? 3 : 0) : String(val)}
+                {formatStatVal(key, val)}
               </strong>
               {beginnerMode && BEGINNER_TERMS[key] && (
                 <small className="stat-chip-hint">{BEGINNER_TERMS[key].slice(0, 26)}...</small>
@@ -2509,12 +2551,25 @@ function AnalysisResultCard({
         </div>
       )}
 
-      {/* AI Narrative Reading */}
-      <AiNarrative
-        payload={narrative}
-        label={`WHAT THIS ${(result.analysis_type || 'analysis').replaceAll('_', ' ').toUpperCase()} SHOWS`}
-        compact
-      />
+      {/* Extended Run Notes Accordion (Only if distinct from primary) */}
+      {hasDistinctSecondary && (
+        <div className="extended-notes-accordion">
+          <button
+            type="button"
+            className="extended-notes-toggle-btn"
+            onClick={() => setShowExtendedNotes((v) => !v)}
+            aria-expanded={showExtendedNotes}
+          >
+            <Sparkles size={11} />
+            <span>{showExtendedNotes ? 'Hide statistical notes ▴' : 'View extended statistical notes ▾'}</span>
+          </button>
+          {showExtendedNotes && (
+            <div className="extended-notes-content" style={{ marginTop: 8 }}>
+              <AiNarrative payload={narrative} label="STATISTICAL RUN NOTES" compact tight />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Key Insights List */}
       {insights.length > 0 && (
@@ -3941,7 +3996,9 @@ function FeaturesPage({ dataset, setError, onUpload, onDemo }) {
           <VisualizationPlan plan={result.visualization_plan} />
           {/* The reading of the ranking itself, then the reading of the run */}
           <AiNarrative payload={result.chart_narrative} label="WHAT THIS GRAPH SHOWS" compact tight />
-          <AiNarrative payload={result.narrative} label="WHAT DRIVES THIS TARGET" compact />
+          {result.narrative && result.narrative.text?.trim() !== result.chart_narrative?.text?.trim() && (
+            <AiNarrative payload={result.narrative} label="WHAT DRIVES THIS TARGET" compact />
+          )}
           {result.insights && (
             <div style={{ marginTop: 14 }}>
               <span className="eyebrow">MODELING INSIGHTS</span>
