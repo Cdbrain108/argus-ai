@@ -2308,8 +2308,6 @@ function AnalysisResultCard({
 }) {
   if (!result) return null
 
-  const [showExtendedNotes, setShowExtendedNotes] = useState(false)
-
   const stats = result.statistics || {}
   const insights = result.insights || []
   const ignoredKeys = new Set([
@@ -2328,18 +2326,32 @@ function AnalysisResultCard({
     || (result.columns?.length === 1 && String(result.columns[0]).toLowerCase().endsWith('id') && stats.uniqueness_pct >= 90)
   const targetCol = result.columns?.[0] || 'Target Column'
 
-  // Pick primary narrative: prefer grounded visual chart reading if present, else analytical narrative
-  const primaryNarrative = (result.chart_narrative?.text && result.chart_narrative.text.trim().length > 0)
-    ? result.chart_narrative
-    : narrative
+  // Build unified narrative that is always shown in full without cutting anything off
+  const unifiedNarrative = useMemo(() => {
+    const chartText = (result.chart_narrative?.text || '').trim()
+    const narrText = (narrative?.text || '').trim()
 
-  // Check if secondary narrative has distinct, non-duplicate information
-  const hasDistinctSecondary = Boolean(
-    primaryNarrative === result.chart_narrative &&
-    narrative?.text &&
-    narrative.text.trim().length > 0 &&
-    narrative.text.trim() !== result.chart_narrative?.text?.trim()
-  )
+    if (!chartText && !narrText) return null
+
+    // If only one exists, return it directly
+    if (chartText && !narrText) return result.chart_narrative
+    if (narrText && !chartText) return narrative
+
+    // Both exist: check if one already contains the other
+    if (chartText === narrText || chartText.includes(narrText)) {
+      return result.chart_narrative
+    }
+    if (narrText.includes(chartText)) {
+      return narrative
+    }
+
+    // Combine visual reading and statistical context seamlessly
+    return {
+      text: `${chartText}\n\n${narrText}`,
+      source: result.chart_narrative?.source || narrative?.source || 'ai',
+      note: result.chart_narrative?.note || narrative?.note,
+    }
+  }, [result.chart_narrative, narrative])
 
   const formatStatVal = (key, val) => {
     if (typeof val === 'number') {
@@ -2445,10 +2457,10 @@ function AnalysisResultCard({
           <p>No meaningful chart is available for this selection. Read the column findings below or choose other variables.</p>}
       </div>
 
-      {/* Primary Grounded AI Narrative (Unified Description) */}
-      {primaryNarrative && (
+      {/* Primary Grounded AI Narrative (Always Shown in Full) */}
+      {unifiedNarrative && (
         <AiNarrative
-          payload={primaryNarrative}
+          payload={unifiedNarrative}
           label={`WHAT THIS ${(result.analysis_type || 'analysis').replaceAll('_', ' ').toUpperCase()} SHOWS`}
           compact
         />
@@ -2548,26 +2560,6 @@ function AnalysisResultCard({
               )}
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Extended Run Notes Accordion (Only if distinct from primary) */}
-      {hasDistinctSecondary && (
-        <div className="extended-notes-accordion">
-          <button
-            type="button"
-            className="extended-notes-toggle-btn"
-            onClick={() => setShowExtendedNotes((v) => !v)}
-            aria-expanded={showExtendedNotes}
-          >
-            <Sparkles size={11} />
-            <span>{showExtendedNotes ? 'Hide statistical notes ▴' : 'View extended statistical notes ▾'}</span>
-          </button>
-          {showExtendedNotes && (
-            <div className="extended-notes-content" style={{ marginTop: 8 }}>
-              <AiNarrative payload={narrative} label="STATISTICAL RUN NOTES" compact tight />
-            </div>
-          )}
         </div>
       )}
 

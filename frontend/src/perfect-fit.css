@@ -6393,51 +6393,6 @@
 /* --------------------------------------------------------------------------
    32. COMPACT ANALYSIS DESCRIPTIONS & STATS MATRIX (Explore & AI Analyst)
    -------------------------------------------------------------------------- */
-.extended-notes-accordion {
-  margin: 6px 0 2px !important;
-}
-
-.extended-notes-toggle-btn {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 5px !important;
-  background: rgba(56, 189, 248, 0.08) !important;
-  border: 1px solid rgba(56, 189, 248, 0.22) !important;
-  border-radius: 6px !important;
-  padding: 4px 10px !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  color: #38bdf8 !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease !important;
-}
-
-.extended-notes-toggle-btn:hover {
-  background: rgba(56, 189, 248, 0.16) !important;
-  border-color: rgba(56, 189, 248, 0.38) !important;
-  color: #7dd3fc !important;
-}
-
-.ai-narrative-clamp-btn {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 3px !important;
-  background: rgba(56, 189, 248, 0.12) !important;
-  border: 1px solid rgba(56, 189, 248, 0.3) !important;
-  color: #38bdf8 !important;
-  font-size: 10.5px !important;
-  font-weight: 700 !important;
-  padding: 2px 8px !important;
-  border-radius: 999px !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease !important;
-}
-
-.ai-narrative-clamp-btn:hover {
-  background: rgba(56, 189, 248, 0.22) !important;
-  color: #e0f2fe !important;
-  transform: translateY(-1px) !important;
-}
 
 @media (max-width: 768px) {
   .stats-badge-grid {
