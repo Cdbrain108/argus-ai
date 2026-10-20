@@ -6509,6 +6509,34 @@ select {
   box-shadow: 0 0 10px rgba(249, 115, 22, 0.2);
 }
 
+.topbar-tour-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.topbar-tour-btn:hover {
+  color: var(--text);
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.topbar-tour-btn.active {
+  color: #38bdf8;
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+}
+
 .fullscreen-mode-toggle-btn {
   display: inline-flex;
   align-items: center;
@@ -7145,4 +7173,442 @@ select {
   border-color: rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
 }
+
+/* ==========================================================================
+   Workspace Guided Tour (First-time user onboarding & suggested steps)
+   ========================================================================== */
+.workspace-tour-card-wrap {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9998;
+  max-width: 520px;
+  width: calc(100vw - 36px);
+  animation: tour-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tour-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.workspace-tour-card {
+  position: relative;
+  background: rgba(13, 19, 36, 0.94);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.tour-progress-bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.tour-progress-fill {
+  height: 100%;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.tour-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 8px;
+}
+
+.tour-badge-cluster {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tour-step-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid;
+}
+
+.tour-step-dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.tour-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tour-dot.active {
+  width: 16px;
+  border-radius: 4px;
+  background: var(--orange, #f97316);
+}
+
+.tour-dot.completed {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.tour-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tour-ctrl-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-dim, #94a3b8);
+  padding: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s ease;
+}
+
+.tour-ctrl-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tour-card-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 8px 16px 12px;
+}
+
+.tour-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.tour-text-content {
+  flex: 1;
+}
+
+.tour-step-title {
+  margin: 0 0 6px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.35;
+}
+
+.tour-step-desc {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-muted, #cbd5e1);
+  line-height: 1.55;
+}
+
+.tour-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.tour-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tour-jump-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.tour-jump-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.tour-skip-link {
+  background: transparent;
+  border: none;
+  color: var(--text-dim, #94a3b8);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.18s ease;
+}
+
+.tour-skip-link:hover {
+  color: #fff;
+}
+
+.tour-footer-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tour-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.tour-nav-btn.prev {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+}
+
+.tour-nav-btn.prev:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.tour-nav-btn.next.primary {
+  color: #fff;
+  border: 1px solid transparent;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.tour-nav-btn.next.primary:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+.workspace-tour-minimized {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9998;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(13, 19, 36, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.workspace-tour-minimized:hover {
+  border-color: rgba(249, 115, 22, 0.7);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(249, 115, 22, 0.25);
+}
+
+.tour-min-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.tour-min-expand {
+  background: transparent;
+  border: none;
+  color: var(--text-dim, #94a3b8);
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* ==========================================================================
+   Beginner-Friendly Concept Explainer Card (for Explore tabs)
+   ========================================================================== */
+.explore-concept-guide {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 13px 16px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3.5px solid var(--guide-color, var(--orange));
+  border-radius: 10px;
+}
+
+.explore-concept-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--guide-color, var(--orange));
+}
+
+.explore-concept-text {
+  flex: 1;
+}
+
+.explore-concept-eyebrow {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--guide-color, var(--orange));
+  margin-bottom: 2px;
+}
+
+.explore-concept-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 3px;
+}
+
+.explore-concept-desc {
+  font-size: 12px;
+  color: var(--text-muted, #cbd5e1);
+  line-height: 1.5;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .workspace-tour-card-wrap {
+    bottom: 74px; /* avoid bottom mobile nav */
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-width: none;
+  }
+  .workspace-tour-minimized {
+    bottom: 74px;
+    right: 12px;
+  }
+  .tour-card-body {
+    padding: 8px 12px 10px;
+  }
+  .tour-card-footer {
+    padding: 8px 12px 12px;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .tour-footer-left {
+    justify-content: space-between;
+  }
+  .tour-footer-nav {
+    justify-content: flex-end;
+  }
+  .tour-nav-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   Beginner Explainer Callout (Hero & Landing)
+   ========================================================================== */
+.arg-hero-beginner-explainer {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-width: 680px;
+  margin: 18px 0 22px;
+  padding: 13px 18px;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(56, 189, 248, 0.05) 100%);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  border-left: 3.5px solid #f97316;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  text-align: left;
+}
+
+.beginner-explainer-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #f97316;
+  text-transform: uppercase;
+}
+
+.arg-hero-beginner-explainer p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #cbd5e1;
+}
+
+.arg-hero-beginner-explainer strong {
+  color: #fff;
+}
+
+.arg-hero-beginner-explainer em {
+  font-style: normal;
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .arg-hero-beginner-explainer {
+    margin: 14px 0 18px;
+    padding: 12px 14px;
+    width: 100%;
+  }
+  .arg-hero-beginner-explainer p {
+    font-size: 12px;
+  }
+}
+
 

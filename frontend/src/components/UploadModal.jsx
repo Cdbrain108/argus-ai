@@ -143,9 +143,9 @@ export default function UploadModal({
                 <span className="arg-pulse-dot" /> 100% In-Memory Python
               </span>
             </div>
-            <h3 className="arg-upload-modal-title">Choose or Ingest Dataset</h3>
+            <h3 className="arg-upload-modal-title">Upload your spreadsheet or dataset</h3>
             <p className="arg-upload-modal-subtitle">
-              Select one of our 3 verified practice datasets or upload your own file.
+              Upload any Excel, CSV, or data file &mdash; Argus will inspect it and explain what everything means in plain English.
             </p>
           </div>
         </div>
@@ -170,7 +170,7 @@ export default function UploadModal({
             aria-selected={activeTab === 'upload'}
           >
             <UploadCloud size={14} />
-            <span>Upload Custom File</span>
+            <span>Upload Your Own File (Excel, CSV)</span>
           </button>
         </div>
 

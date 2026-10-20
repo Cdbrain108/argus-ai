@@ -12,6 +12,7 @@ import {
   ChevronsRight,
   ChevronUp,
   Columns,
+  Compass,
   Copy,
   Crosshair,
   Database,
@@ -61,6 +62,7 @@ import AuthPage from './components/AuthPage'
 import RatingModal from './components/RatingModal'
 import DatasetContinuationModal from './components/DatasetContinuationModal'
 import UploadModal from './components/UploadModal'
+import WorkspaceTour from './components/WorkspaceTour'
 import { MobileWorkspaceEmpty, MobileAnalystSwitcher } from './components/MobilePerfect'
 import ArgusLogoIntro from './components/ArgusLogoIntro'
 import { subscribeToAuthChanges, logoutFirebase } from './services/firebase'
@@ -849,6 +851,13 @@ function Workspace(props) {
   const [visitedPages, setVisitedPages] = useState(() => new Set(['analyst', page || 'dataset']))
   const [cleaningScanData, setCleaningScanData] = useState(null)
   const [cleaningResult, setCleaningResult] = useState(null)
+  const [showTour, setShowTour] = useState(() => {
+    try {
+      return !localStorage.getItem('argus-tour-seen')
+    } catch {
+      return false
+    }
+  })
 
   useEffect(() => {
     setCleaningScanData(null)
@@ -1164,6 +1173,18 @@ function Workspace(props) {
           )}
         </div>
 
+        <button
+          type="button"
+          className={`nav-item ${showTour ? 'active' : ''}`}
+          onClick={() => {
+            setShowTour(true)
+            if (isMobileScreen) setSidebarOpen(false)
+          }}
+          title="Guided suggested steps for first time users"
+        >
+          <Compass size={17} /> Suggested Steps Guide
+        </button>
+
         <button className="nav-item" onClick={() => setShowSettings(true)}>
           <Settings2 size={17} /> Settings & Modes
         </button>
@@ -1259,6 +1280,15 @@ function Workspace(props) {
             ))}
           </nav>
           <div className="topbar-actions">
+            <button
+              type="button"
+              className={`topbar-tour-btn ${showTour ? 'active' : ''}`}
+              onClick={() => setShowTour((prev) => !prev)}
+              title="Interactive suggested steps walkthrough"
+            >
+              <Compass size={14} />
+              <span>Guide</span>
+            </button>
             <button
               type="button"
               className={`topbar-fullscreen-btn ${isFullscreen ? 'active' : ''}`}
@@ -1393,6 +1423,16 @@ function Workspace(props) {
 
 
         </div>
+
+        {/* First-time & on-demand guided walkthrough */}
+        {dataset && (
+          <WorkspaceTour
+            isOpen={showTour}
+            onClose={() => setShowTour(false)}
+            page={page}
+            setPage={setPage}
+          />
+        )}
       </main>
 
       {/* ── Dedicated Mobile Bottom Taskbar (Samvaad Ergonomics) ────────────── */}
@@ -2845,6 +2885,94 @@ function ExploreSelect({ id, label, value, onChange, options }) {
   )
 }
 
+const CONCEPT_GUIDES = {
+  overview: {
+    eyebrow: 'WHAT IS DIAGNOSTIC OVERVIEW?',
+    color: '#f97316',
+    icon: SlidersHorizontal,
+    title: 'Your complete dataset health & structural audit at a glance',
+    desc: 'Before drawing individual charts, this overview counts your rows, flags missing cells, and classifies every column into numbers, categories, or dates.',
+    tip: '💡 Recommended Next Step: Check if any columns have high missing percentages, then click Univariate Distribution to inspect specific columns.',
+  },
+  univariate: {
+    eyebrow: 'WHAT IS UNIVARIATE ANALYSIS?',
+    color: '#38bdf8',
+    icon: LineChart,
+    title: 'Examining one single column at a time (“Uni” = One)',
+    desc: 'Shows how values in one column are spread out — the average, minimum, maximum, and most common numbers or categories. Helps spot extreme outliers and skewed data.',
+    tip: '💡 Recommended Next Step: Select a column from the dropdown below to see its histogram or bar chart. When done, move to Bivariate Relationship to compare pairs.',
+  },
+  bivariate: {
+    eyebrow: 'WHAT IS BIVARIATE ANALYSIS?',
+    color: '#10b981',
+    icon: BrainCircuit,
+    title: 'Comparing how two columns interact with each other (“Bi” = Two)',
+    desc: 'Does column A affect column B? Bivariate plots two variables together (e.g. Price vs Sales or Age vs Survival) to reveal trends, patterns, and cause-and-effect links.',
+    tip: '💡 Recommended Next Step: Pick Variable A and Variable B below, then click “Run Analysis” to plot their relationship. Check the AI Analyst for a grounded narration.',
+  },
+  correlation: {
+    eyebrow: 'WHAT IS CORRELATION?',
+    color: '#a855f7',
+    icon: TableIcon,
+    title: 'A heatmap showing which numeric columns rise or fall together',
+    desc: 'Measures relationship strength from -1.0 to +1.0. A score near +1 means both columns increase together; near -1 means when one goes up, the other goes down; near 0 means no link.',
+    tip: '💡 Recommended Next Step: Click “Run Correlation” to scan the full matrix. Look for deep green or blue boxes to discover the strongest predictive pairs.',
+  },
+  multivariate: {
+    eyebrow: 'WHAT IS MULTIVARIATE / CLUSTERING?',
+    color: '#ec4899',
+    icon: Layers,
+    title: 'Finding natural customer or record groups across many variables',
+    desc: 'Instead of just looking at two columns, clustering groups rows that share similar patterns across all columns (e.g., grouping customers by purchasing habits).',
+    tip: '💡 Recommended Next Step: Select a target column or keep Auto to let Argus find natural clusters in your dataset.',
+  },
+}
+
+function ExploreConceptGuide({ tab }) {
+  const [minimized, setMinimized] = useState(false)
+  const guide = CONCEPT_GUIDES[tab]
+  if (!guide) return null
+
+  const Icon = guide.icon
+
+  return (
+    <div className="explore-concept-guide" style={{ '--guide-color': guide.color }}>
+      <div className="explore-concept-icon">
+        <Icon size={18} />
+      </div>
+      <div className="explore-concept-text">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          <span className="explore-concept-eyebrow">{guide.eyebrow}</span>
+          <button
+            type="button"
+            onClick={() => setMinimized((m) => !m)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted, #94a3b8)',
+              fontSize: '11px',
+              cursor: 'pointer',
+              padding: '0 4px',
+              textDecoration: 'underline',
+            }}
+          >
+            {minimized ? 'Explain this tool' : 'Hide explanation'}
+          </button>
+        </div>
+        <h4 className="explore-concept-title">{guide.title}</h4>
+        {!minimized && (
+          <>
+            <p className="explore-concept-desc">{guide.desc}</p>
+            <div style={{ marginTop: '6px', fontSize: '11.5px', color: '#f1f5f9', opacity: 0.9 }}>
+              {guide.tip}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function ExplorePage({
   dataset,
   profile,
@@ -3093,6 +3221,9 @@ function ExplorePage({
         </div>
         <span className="explore-mode-status"><i /> COMPUTED LOCALLY</span>
       </div>
+
+      {/* Beginner Concept Guide for current Explore tool */}
+      <ExploreConceptGuide tab={tab} />
 
       {tab === 'overview' && (
         <DatasetOverview profile={profile} dataset={dataset} />

@@ -206,8 +206,13 @@ class Planner:
             return {"intent": intent, "confidence": 0.85}
 
         # 12. Summary Overview
-        if any(w in q for w in ("summary", "overview", "dataset overview", "about this dataset")):
-            return {"intent": "summary_overview", "confidence": 0.8}
+        if any(w in q for w in (
+            "summary", "overview", "dataset overview", "about this dataset", "about the dataset",
+            "what is this dataset", "explain this dataset", "explain the dataset", "tell me about this dataset",
+            "tell me about the dataset", "what is in this dataset", "what does this data contain",
+            "describe this dataset", "describe the dataset", "what kind of data", "what data is this"
+        )):
+            return {"intent": "summary_overview", "confidence": 0.95}
 
         # 13. Direct Column comparisons
         if len(matched) >= 3:

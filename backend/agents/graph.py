@@ -105,7 +105,7 @@ def conversational_node(state: AnalystState) -> Dict[str, Any]:
                 "**ARGUS** is an AI-powered Automated Exploratory Data Analysis (EDA) platform. "
                 "It is built to help data scientists and analysts instantly profile raw datasets, uncover data hygiene issues "
                 "and missing values, compute statistical correlations, rank predictive feature drivers, execute dynamic "
-                "computational queries in a safe Python sandbox, and generate comprehensive PDF analytical reports."
+                "computational queries in a safe Python sandbox, and provide grounded plain-English explanations for every pattern and graph."
             )
         elif any(w in low for w in ("who are you", "what are you", "your name")):
             reply = (

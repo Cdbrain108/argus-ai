@@ -222,18 +222,29 @@ function MobileHero({ typed, onEnter, onDemo, statsList, statsShown, statsRef, o
     <div className="arg-mobile-hero">
       <div className="arg-hero-badge">
         <span className="arg-pulse" />
-        <span>AUTOMATED EDA &amp; DATA INTELLIGENCE</span>
+        <span>AUTOMATED EDA &amp; SPREADSHEET INTELLIGENCE</span>
       </div>
 
       <h1 className="mobile-hero-h1">
-        Understand your data <br />
+        Upload your spreadsheet. <br />
         <span className="arg-type">{typed}</span>
         <i className="arg-caret" />
       </h1>
 
       <p className="mobile-hero-sub">
-        Drop in raw CSV, Excel or Parquet. Argus types columns, scores dataset health, charts statistical distributions, and explains findings &mdash; 100% computed locally in Python.
+        Upload your structured Excel, CSV, or data file &mdash; Argus checks data quality, spots errors, draws interactive charts, and explains what everything means in plain English.
       </p>
+
+      {/* Beginner Concept Pill */}
+      <div className="arg-hero-beginner-explainer">
+        <div className="beginner-explainer-tag">
+          <Sparkles size={13} color="#f97316" />
+          <span>NEW TO DATA OR EDA?</span>
+        </div>
+        <p>
+          <strong>EDA (Exploratory Data Analysis)</strong> is exploring your spreadsheet to find averages, trends, mistakes, and connections between columns. <em>No coding or data science required</em> &mdash; Argus explains it all!
+        </p>
+      </div>
 
       <div className="mobile-hero-actions">
         <button className="arg-btn-primary mobile-cta-btn" onClick={onEnter}>
@@ -937,17 +948,27 @@ export default function Landing({ onEnter, onDemo, onOpenAuth, user, onOpenRatin
                 </div>
 
                 <h1>
-                  Understand your data{' '}
+                  Upload your spreadsheet.{' '}
                   <span className="arg-hero-title-break"><br /></span>
                   <span className="arg-type">{typed}</span>
                   <i className="arg-caret" />
                 </h1>
 
                 <p className="arg-hero-sub">
-                  Drop in a CSV, Excel or Parquet file. Argus types every column, scores the data&rsquo;s health,
-                  draws ten-plus charts from real computed statistics, and explains each one in plain English &mdash;
-                  all inside a local Python sandbox your rows never leave.
+                  Upload your structured Excel, CSV, or data files &mdash; Argus types every column, scores data health,
+                  draws interactive charts, and explains what everything means in plain English without requiring any Python or data science background.
                 </p>
+
+                {/* Beginner Explainer Callout */}
+                <div className="arg-hero-beginner-explainer">
+                  <div className="beginner-explainer-tag">
+                    <Sparkles size={14} color="#f97316" />
+                    <span>WHAT IS THIS PLATFORM FOR?</span>
+                  </div>
+                  <p>
+                    <strong>Think of Argus as an AI data analyst friend for your spreadsheets.</strong> Instead of writing complex formulas or Python code, simply drop in your file. Argus uncovers missing data, draws instant distribution and relationship charts, and explains the story inside your numbers in clear, plain human English.
+                  </p>
+                </div>
 
                 <div className="arg-hero-actions">
                   <button className="arg-btn-primary" onClick={onEnter}>
