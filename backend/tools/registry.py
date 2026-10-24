@@ -602,12 +602,31 @@ def generate_dataset_summary(dataset_id: str) -> dict:
     session = get_dataset(dataset_id)
     if session is None:
         raise ValueError(f"Dataset {dataset_id} not found")
-    from backend.analysis.adapters import run_eda
+    from backend.analysis.adapters import run_eda, detect_target_variable
+    df = session.df
+    stats = run_eda(df, session.dataset_name)
+    name = session.dataset_name or "Dataset"
+    rows = stats.get("rows", len(df))
+    cols = stats.get("columns", len(df.columns))
+    col_names = stats.get("column_names", list(df.columns))
+    missing = stats.get("missing_total", int(df.isnull().sum().sum()))
+    target = detect_target_variable(df)
+    target_str = f" Target variable candidate: `{target}`." if target else ""
+    
+    num_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+    cat_cols = [c for c in df.columns if c not in num_cols]
+    
+    insights = [
+        f"The dataset contains {rows:,} observations across {cols} features ({len(num_cols)} numeric, {len(cat_cols)} categorical).",
+        f"Primary features include: {', '.join(col_names[:7])}{'...' if len(col_names) > 7 else ''}.{target_str}",
+        f"Data completeness: {missing:,} total missing cells detected across the entire table.",
+    ]
     return {
         "analysis_id": _make_id(),
         "analysis_type": "overview",
-        "title": "Dataset Summary",
-        "statistics": run_eda(session.df, session.dataset_name),
+        "title": f"Dataset Summary ({name})",
+        "insights": insights,
+        "statistics": stats,
     }
 
 

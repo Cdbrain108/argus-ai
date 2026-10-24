@@ -300,12 +300,79 @@ function App() {
     return () => clearTimeout(timer)
   }, [toast])
 
+  // Browser History & Back Gesture Navigation Management
+  // Intercepts browser Back button / mobile swipe-back to close open modals or return to Landing,
+  // preventing accidental exit from the application.
+  useEffect(() => {
+    try {
+      if (!window.history.state) {
+        window.history.replaceState({ view, page }, '', window.location.pathname + window.location.hash)
+      }
+    } catch {}
+
+    const handlePopState = (e) => {
+      // 1. If any modal is open, back button simply closes the modal and stays in the app
+      if (authModalOpen || uploadModalOpen || ratingModalOpen || showSettings) {
+        setAuthModalOpen(false)
+        setUploadModalOpen(false)
+        setUploadModalForNewChat(false)
+        setRatingModalOpen(false)
+        setShowSettings(false)
+        return
+      }
+
+      const state = e.state
+      const hash = (window.location.hash || '').replace('#', '')
+
+      // 2. If user is inside the Workspace
+      if (view === 'workspace') {
+        if (!hash || hash === '' || state?.view === 'landing') {
+          // Back takes user smoothly to the landing page instead of closing the browser tab!
+          setView('landing')
+          window.scrollTo(0, 0)
+          return
+        }
+        if (['analyst', 'dataset', 'explore', 'cleaning', 'features'].includes(hash)) {
+          setPage(hash)
+          return
+        }
+        if (state?.page) {
+          setPage(state.page)
+          return
+        }
+      } else if (view === 'auth') {
+        setView('landing')
+        window.scrollTo(0, 0)
+        return
+      } else if (view === 'landing') {
+        if (['analyst', 'dataset', 'explore', 'cleaning', 'features'].includes(hash)) {
+          setView('workspace')
+          setPage(hash)
+          return
+        }
+        // Maintain history anchor on landing so back gesture does not close tab
+        try {
+          window.history.pushState({ view: 'landing', page: 'dataset' }, '', window.location.pathname)
+        } catch {}
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [view, page, authModalOpen, uploadModalOpen, ratingModalOpen, showSettings])
+
   function openAuth(tab = 'login', asModal = false) {
     setAuthModalTab(tab)
     if (asModal) {
       setAuthModalOpen(true)
+      try {
+        window.history.pushState({ modal: 'auth' }, '', window.location.hash || '#auth')
+      } catch {}
     } else {
       setView('auth')
+      try {
+        window.history.pushState({ view: 'auth' }, '', '#auth')
+      } catch {}
       window.scrollTo(0, 0)
     }
   }
@@ -320,6 +387,9 @@ function App() {
       setView('landing')
       setUploadModalForNewChat(false)
       setUploadModalOpen(true)
+      try {
+        window.history.pushState({ modal: 'upload' }, '', '#upload')
+      } catch {}
     }
   }
 
@@ -336,6 +406,9 @@ function App() {
 
   function openRating() {
     setRatingModalOpen(true)
+    try {
+      window.history.pushState({ modal: 'rating' }, '', '#rating')
+    } catch {}
   }
 
   // The AI description of the upload, typed out on the Dataset page. Held here
@@ -359,8 +432,13 @@ function App() {
     fileInputRef.current?.click()
   }
 
-  function enterWorkspace() {
+  function enterWorkspace(targetPage) {
+    const p = targetPage || page || 'dataset'
     setView('workspace')
+    setPage(p)
+    try {
+      window.history.pushState({ view: 'workspace', page: p }, '', '#' + p)
+    } catch {}
     window.scrollTo(0, 0)
   }
 
@@ -1052,6 +1130,9 @@ function Workspace(props) {
       }
     }
     setPage(id)
+    try {
+      window.history.pushState({ view: 'workspace', page: id }, '', '#' + id)
+    } catch {}
     if (isMobileScreen) {
       setSidebarOpen(false)
     }

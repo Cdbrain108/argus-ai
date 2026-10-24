@@ -2104,18 +2104,26 @@ def run_multivariate_analysis(df: pd.DataFrame, target: Optional[str] = None, n_
 #: Ordered by how strongly the name implies "this is the thing to predict".
 _TARGET_HINTS = (
     "target", "label", "class", "outcome", "result", "response", "y",
-    "churn", "churned", "survived", "default", "fraud", "converted", "clicked",
-    "price", "revenue", "sales", "income", "salary", "cost", "amount",
-    "score", "rating", "demand", "count", "total",
+    "churn", "churned", "retention", "survived", "survival", "default", "fraud",
+    "converted", "conversion", "clicked", "click",
+    "price", "revenue", "sales", "income", "salary", "cost", "amount", "spend", "profit",
+    "score", "rating", "demand", "rentals", "ridership", "volume", "trips", "orders", "count", "total",
 )
+
+#: Standard calendar and temporal coordinates that serve as independent time axes, not prediction targets.
+_TEMPORAL_COORDINATES = frozenset({
+    "year", "yr", "month", "mnth", "day", "date", "datetime", "timestamp", "quarter", "qtr",
+    "hour", "hr", "minute", "min", "second", "sec", "weekday", "dayofweek", "dayofmonth",
+    "season", "holiday", "workingday", "is_weekend"
+})
 
 
 def detect_target_variable(df: pd.DataFrame) -> Optional[str]:
-    """Pick the most plausible prediction target.
+    """Pick the most plausible prediction target using statistical types and domain semantics.
 
-    The name hints are matched as whole tokens. Matching them as substrings meant
-    the hint `"y"` fired on `city`, `quantity`, `day`, `year` and `payment`, so
-    Feature Discovery routinely explained a column nobody asked about.
+    Excludes calendar indices (e.g. year, month, day) from being chosen as prediction targets.
+    Prioritizes explicit outcome semantics, then true binary/categorical outcome labels, then
+    primary continuous outcome measures with high variance.
     """
     candidates: List[str] = []
     for col in df.columns:
@@ -2136,22 +2144,41 @@ def detect_target_variable(df: pd.DataFrame) -> Optional[str]:
         col: [t for t in re.split(r"[^a-z0-9]+", col.lower()) if t]
         for col in candidates
     }
+
+    # 1. Match semantic outcome / target hints
     for hint in _TARGET_HINTS:
         for col in candidates:
             if hint in token_map[col]:
                 return col
-    # No name hint: prefer a genuine label-shaped column (few classes) over an
-    # arbitrary measurement, then fall back to the widest-ranging numeric.
-    binary = [c for c in candidates if df[c].dropna().nunique() == 2]
+
+    # Helper: Detect if a candidate is a calendar coordinate or time index
+    def is_temporal_or_index(col_name: str) -> bool:
+        tokens = token_map.get(col_name, [])
+        if any(t in _TEMPORAL_COORDINATES for t in tokens):
+            return True
+        s = df[col_name].dropna()
+        if pd.api.types.is_numeric_dtype(s) and len(s) > 0:
+            if s.min() >= 1900 and s.max() <= 2100 and s.nunique() <= 50:
+                return True
+        return False
+
+    substantive = [c for c in candidates if not is_temporal_or_index(c)]
+    pool = substantive if substantive else candidates
+
+    # 2. Prefer a genuine label-shaped column (binary / small classification outcome)
+    binary = [c for c in pool if df[c].dropna().nunique() == 2]
     if binary:
         return binary[0]
-    numeric = [c for c in candidates if pd.api.types.is_numeric_dtype(df[c])]
+
+    # 3. Continuous outcome measurements (regression targets)
+    numeric = [c for c in pool if pd.api.types.is_numeric_dtype(df[c])]
     if numeric:
         scored = [(c, int(df[c].nunique())) for c in numeric]
-        scored = [item for item in scored if 2 < item[1] < max(len(df) * 0.8, 3)] or scored
+        scored = [item for item in scored if 2 < item[1] < max(len(df) * 0.95, 3)] or scored
         scored.sort(key=lambda item: item[1])
         return scored[-1][0]
-    return candidates[0]
+
+    return pool[0]
 
 
 def build_analysis_capabilities(df: pd.DataFrame) -> dict:

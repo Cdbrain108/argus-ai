@@ -207,6 +207,50 @@ export default function AuthModal({
         </button>
       </div>
 
+      {onDemo && (
+        <div className="arg-auth-top-demo-banner">
+          <div className="demo-banner-lead">
+            <Zap size={14} color="#f97316" />
+            <span>Try without login:</span>
+          </div>
+          <div className="demo-banner-chips">
+            <button
+              type="button"
+              className="demo-banner-chip titanic"
+              onClick={() => {
+                if (!embedded) onClose?.()
+                onDemo?.('titanic')
+              }}
+              title="1-Click Titanic Survival Demo"
+            >
+              🚢 Titanic
+            </button>
+            <button
+              type="button"
+              className="demo-banner-chip bikeshare"
+              onClick={() => {
+                if (!embedded) onClose?.()
+                onDemo?.('bikeshare')
+              }}
+              title="1-Click Bike Share Ridership Demo"
+            >
+              🚲 Bike Share
+            </button>
+            <button
+              type="button"
+              className="demo-banner-chip churn"
+              onClick={() => {
+                if (!embedded) onClose?.()
+                onDemo?.('churn')
+              }}
+              title="1-Click Customer Churn Demo"
+            >
+              👥 Churn
+            </button>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="arg-auth-alert error">
           <AlertCircle size={16} />
@@ -343,43 +387,55 @@ export default function AuthModal({
       <div className="arg-auth-footer">
         {onDemo && (
           <div className="arg-auth-guest-section">
-            <span className="arg-auth-guest-heading">OR EXPLORE AS GUEST:</span>
+            <div className="arg-auth-guest-header">
+              <span className="arg-auth-guest-badge">Instant Access</span>
+              <span className="arg-auth-guest-heading">OR EXPLORE WITH BENCHMARK DEMO DATA</span>
+            </div>
             <div className="arg-auth-guest-grid">
               <button
                 type="button"
-                className="arg-auth-guest-btn"
+                className="arg-auth-guest-btn titanic"
                 onClick={() => {
                   if (!embedded) onClose?.()
                   onDemo?.('titanic')
                 }}
                 title="Explore Titanic Survival benchmark dataset"
               >
-                <Zap size={13} color="#f97316" />
-                <span>Titanic Demo</span>
+                <div className="guest-btn-top">
+                  <Zap size={13} color="#f97316" />
+                  <span className="guest-btn-title">Titanic Demo</span>
+                </div>
+                <span className="guest-btn-sub">Classification &middot; 891 rows</span>
               </button>
               <button
                 type="button"
-                className="arg-auth-guest-btn"
+                className="arg-auth-guest-btn bikeshare"
                 onClick={() => {
                   if (!embedded) onClose?.()
                   onDemo?.('bikeshare')
                 }}
                 title="Explore Capital Bike Share benchmark dataset"
               >
-                <Zap size={13} color="#38bdf8" />
-                <span>Bike Share Demo</span>
+                <div className="guest-btn-top">
+                  <Zap size={13} color="#38bdf8" />
+                  <span className="guest-btn-title">Bike Share</span>
+                </div>
+                <span className="guest-btn-sub">Regression &middot; 731 rows</span>
               </button>
               <button
                 type="button"
-                className="arg-auth-guest-btn"
+                className="arg-auth-guest-btn churn"
                 onClick={() => {
                   if (!embedded) onClose?.()
                   onDemo?.('churn')
                 }}
                 title="Explore Customer Churn benchmark dataset"
               >
-                <Zap size={13} color="#10b981" />
-                <span>Churn Demo</span>
+                <div className="guest-btn-top">
+                  <Zap size={13} color="#10b981" />
+                  <span className="guest-btn-title">Churn Demo</span>
+                </div>
+                <span className="guest-btn-sub">Retention &middot; 1,000 rows</span>
               </button>
             </div>
           </div>

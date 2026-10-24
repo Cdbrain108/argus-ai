@@ -95,10 +95,27 @@ def conversational_node(state: AnalystState) -> Dict[str, Any]:
     low = message.lower().strip()
 
     if intent == "meta_identity":
-        if any(w in low for w in ("who made", "who created", "who built", "who designed", "who developed", "author", "creator", "who wrote")):
+        if any(w in low for w in ("who made", "who created", "who built", "who designed", "who developed", "author", "creator", "who wrote", "anuj")):
             reply = (
                 "**ARGUS** was designed and developed by **Anuj Kesharwani** as an AI-powered Automated "
                 "Exploratory Data Analysis & Intelligent Analytics Platform."
+            )
+        elif any(w in low for w in ("dataset", "data", "records", "columns", "features", "rows")) and any(w in low for w in ("for", "purpose", "type", "kind", "about", "what", "tell", "explain", "describe")):
+            cols = [c.get("name") for c in profile.get("column_summary", []) if c.get("name")]
+            numeric = profile.get("numeric_columns", [])
+            cats = profile.get("categorical_columns", [])
+            target = profile.get("target_variable")
+            row_count = profile.get("row_count") or len(state.get("df", []))
+            col_count = len(cols) if cols else (len(numeric) + len(cats))
+            target_str = f" with `{target}` as the target variable" if target else ""
+            sample_cols = ", ".join(f"`{c}`" for c in cols[:6]) if cols else ", ".join(f"`{c}`" for c in (numeric + cats)[:6])
+            reply = (
+                f"This dataset contains **{row_count} rows** and **{col_count} columns** "
+                f"({len(numeric)} numeric, {len(cats)} categorical){target_str}.\n\n"
+                f"**Key features include:** {sample_cols}{'...' if col_count > 6 else ''}.\n\n"
+                f"It is loaded for exploratory data analysis, pattern discovery, correlation profiling, "
+                f"and predictive modeling. You can ask me to analyze distributions, compare features, inspect correlations, "
+                f"or uncover predictive drivers!"
             )
         elif any(w in low for w in ("what is this project", "what is argus", "purpose", "what does this project do", "what is this for", "what can you do")):
             reply = (

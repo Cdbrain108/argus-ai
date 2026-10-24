@@ -63,10 +63,10 @@ class Planner:
             prompt = (
                 "You are an intent classifier for ARGUS, an automated data analysis system.\n"
                 "Available intents:\n"
-                "- meta_identity: Greeting, identity ('who are you'), creator ('who made this'), or project purpose ('what is this for').\n"
+                "- meta_identity: Greeting, personal identity ('who are you'), creator ('who made this ARGUS tool'), or platform identity ('what is ARGUS'). NOTE: Do NOT use for inquiries about the loaded dataset.\n"
                 "- dataset_suggestions: Asking for analytical ideas, suggestions, or what to explore in this dataset.\n"
                 "- out_of_domain: Completely off-topic inquiries unrelated to data science, statistics, or this dataset (e.g. poetry, recipes, trivia).\n"
-                "- summary_overview: High-level dataset summary, rows/columns overview, or health.\n"
+                "- summary_overview: High-level dataset summary, rows/columns overview, dataset purpose ('what is this dataset for'), type/domain of dataset, or health.\n"
                 "- distribution_analysis: Single-column distribution, spread, or histogram.\n"
                 "- relationship_analysis: Simple two-column relationship or correlation between two specific columns.\n"
                 "- correlation_analysis: Overall correlation matrix or searching for highest correlated features across the dataset.\n"
@@ -94,7 +94,8 @@ class Planner:
         matched = columns or []
 
         # 1. Meta / Identity / Creator / Project Purpose / Greeting
-        if any(w in q for w in (
+        has_dataset_mention = any(w in q for w in ("dataset", "data", "columns", "features", "rows", "records"))
+        if not has_dataset_mention and any(w in q for w in (
             "who made", "who created", "who built", "who designed", "who developed",
             "creator of", "author of", "maker of", "who wrote",
             "who are you", "what are you", "what is your name", "introduce yourself",
@@ -211,14 +212,19 @@ class Planner:
             intent = "distribution_analysis" if matched else "summary_overview"
             return {"intent": intent, "confidence": 0.85}
 
-        # 12. Summary Overview
+        # 12. Summary Overview, Dataset Purpose, Type, & Domain Inquiries
         if any(w in q for w in (
             "summary", "overview", "dataset overview", "about this dataset", "about the dataset",
-            "what is this dataset", "explain this dataset", "explain the dataset", "tell me about this dataset",
-            "tell me about the dataset", "what is in this dataset", "what does this data contain",
-            "describe this dataset", "describe the dataset", "what kind of data", "what data is this"
+            "about that dataset", "what is this dataset", "what is that dataset", "what does this dataset",
+            "what is that dataset for", "what is this dataset for", "what is the dataset for",
+            "purpose of this dataset", "purpose of the dataset", "purpose of that dataset", "dataset purpose",
+            "type of dataset", "dataset type", "kind of dataset", "what kind of data", "what data is this",
+            "what type of data", "explain this dataset", "explain the dataset", "explain that dataset",
+            "tell me about this dataset", "tell me about the dataset", "tell me about that dataset",
+            "what is in this dataset", "what is in the dataset", "what does this data contain",
+            "describe this dataset", "describe the dataset", "describe that dataset"
         )):
-            return {"intent": "summary_overview", "confidence": 0.95}
+            return {"intent": "summary_overview", "confidence": 0.98}
 
         # 13. Direct Column comparisons
         if len(matched) >= 3:

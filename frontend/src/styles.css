@@ -7157,22 +7157,93 @@ select {
   color: #fff;
 }
 
-/* ── Guest Demo Selector Grid in Auth Modal & Page ───────────────────────── */
+/* ── High-Visibility Demo Dataset Banner & Cards in Auth Modal ───────────── */
+.arg-auth-top-demo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.12), rgba(56, 189, 248, 0.08));
+  border: 1px solid rgba(249, 115, 22, 0.28);
+  border-radius: 10px;
+}
+
+.demo-banner-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #f97316;
+  white-space: nowrap;
+}
+
+.demo-banner-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.demo-banner-chip {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.demo-banner-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(249, 115, 22, 0.5);
+  background: rgba(249, 115, 22, 0.15);
+}
+
 .arg-auth-guest-section,
 .auth-guest-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  margin-top: 12px;
+  margin-top: 14px;
+  padding: 12px;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(15, 23, 42, 0.85));
+  border: 1px solid rgba(249, 115, 22, 0.32);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.arg-auth-guest-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.arg-auth-guest-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.22);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.4);
 }
 
 .arg-auth-guest-heading,
 .auth-guest-heading {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.6px;
-  color: var(--text-dim);
+  color: #e2e8f0;
   text-align: center;
   display: block;
 }
@@ -7193,27 +7264,58 @@ select {
 
 .arg-auth-guest-btn,
 .auth-guest-pill-btn {
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 4px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: #fff;
-  font-size: 11.5px;
-  font-weight: 600;
   cursor: pointer;
-  transition: all 0.18s ease;
-  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
 }
 
 .arg-auth-guest-btn:hover,
 .auth-guest-pill-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.arg-auth-guest-btn.titanic:hover {
+  border-color: rgba(249, 115, 22, 0.6);
+  background: rgba(249, 115, 22, 0.15);
+}
+
+.arg-auth-guest-btn.bikeshare:hover {
+  border-color: rgba(56, 189, 248, 0.6);
+  background: rgba(56, 189, 248, 0.15);
+}
+
+.arg-auth-guest-btn.churn:hover {
+  border-color: rgba(16, 185, 129, 0.6);
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.guest-btn-top {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.guest-btn-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.guest-btn-sub {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 500;
 }
 
 /* ==========================================================================

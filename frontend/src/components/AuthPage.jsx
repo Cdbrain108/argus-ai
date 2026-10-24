@@ -419,37 +419,49 @@ export default function AuthPage({
               </div>
 
               <div className="auth-guest-section">
-                <span className="auth-guest-heading">OR EXPLORE PRACTICE DATASETS AS GUEST:</span>
-                <div className="auth-guest-grid">
+                <div className="arg-auth-guest-header">
+                  <span className="arg-auth-guest-badge">Instant Access</span>
+                  <span className="arg-auth-guest-heading">OR EXPLORE WITH BENCHMARK DEMO DATA</span>
+                </div>
+                <div className="arg-auth-guest-grid">
                   <button
                     type="button"
-                    className="auth-guest-pill-btn"
+                    className="arg-auth-guest-btn titanic"
                     onClick={() => onDemo?.('titanic')}
                     disabled={busy || googleBusy}
                     title="Load Titanic Survival Demo"
                   >
-                    <Zap size={13} color="#f97316" />
-                    <span>Titanic Demo</span>
+                    <div className="guest-btn-top">
+                      <Zap size={13} color="#f97316" />
+                      <span className="guest-btn-title">Titanic Demo</span>
+                    </div>
+                    <span className="guest-btn-sub">Classification &middot; 891 rows</span>
                   </button>
                   <button
                     type="button"
-                    className="auth-guest-pill-btn"
+                    className="arg-auth-guest-btn bikeshare"
                     onClick={() => onDemo?.('bikeshare')}
                     disabled={busy || googleBusy}
                     title="Load Capital Bike Share Demo"
                   >
-                    <Zap size={13} color="#38bdf8" />
-                    <span>Bike Share Demo</span>
+                    <div className="guest-btn-top">
+                      <Zap size={13} color="#38bdf8" />
+                      <span className="guest-btn-title">Bike Share</span>
+                    </div>
+                    <span className="guest-btn-sub">Regression &middot; 731 rows</span>
                   </button>
                   <button
                     type="button"
-                    className="auth-guest-pill-btn"
+                    className="arg-auth-guest-btn churn"
                     onClick={() => onDemo?.('churn')}
                     disabled={busy || googleBusy}
                     title="Load Customer Churn Demo"
                   >
-                    <Zap size={13} color="#10b981" />
-                    <span>Churn Demo</span>
+                    <div className="guest-btn-top">
+                      <Zap size={13} color="#10b981" />
+                      <span className="guest-btn-title">Churn Demo</span>
+                    </div>
+                    <span className="guest-btn-sub">Retention &middot; 1,000 rows</span>
                   </button>
                 </div>
               </div>
