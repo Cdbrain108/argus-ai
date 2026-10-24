@@ -138,6 +138,13 @@ def _worker(code: str, df: pd.DataFrame, output) -> None:
         result.status = "success"
         result.output_code = captured.getvalue()[:MAX_OUTPUT_CHARS]
         value = globals_dict.get("result")
+        if not isinstance(value, dict):
+            for cand_key in ("res", "output", "analysis", "data", "final_result"):
+                cand = globals_dict.get(cand_key)
+                if isinstance(cand, dict):
+                    value = cand
+                    break
+
         if isinstance(value, dict):
             result.analysis_name = str(value.get("analysis_name", result.analysis_name))
             result.chart_type = value.get("chart_type")
@@ -149,8 +156,22 @@ def _worker(code: str, df: pd.DataFrame, output) -> None:
             elif result.chart_type and result.chart_data:
                 result.chart = {"type": result.chart_type, "data": result.chart_data, "artifact": result.artifact}
             result.statistics = value.get("statistics", {}) if isinstance(value.get("statistics", {}), dict) else {}
-            result.insights = value.get("insights", []) if isinstance(value.get("insights", []), list) else [str(value.get("insights"))]
+            result.insights = value.get("insights", []) if isinstance(value.get("insights", []), list) else ([str(value.get("insights"))] if value.get("insights") else [])
             result.tables = value.get("tables", []) if isinstance(value.get("tables", []), list) else []
+
+        # If statistics are still empty, inspect computed variables from the script
+        if not result.statistics:
+            inferred = {}
+            for k, v in globals_dict.items():
+                if k.startswith("_") or k in ("pd", "np", "df", "dataset", "pandas", "numpy", "re", "datetime", "result", "output", "captured"):
+                    continue
+                if isinstance(v, (int, float, str, bool)) and not isinstance(v, bool):
+                    inferred[k] = v
+                elif isinstance(v, pd.Series) and len(v) <= 15:
+                    for s_k, s_v in v.items():
+                        inferred[f"{k}_{s_k}"] = round(float(s_v), 2) if isinstance(s_v, (int, float)) else str(s_v)
+            if inferred:
+                result.statistics = inferred
 
         # Detect transformed, cleaned, or mutated dataframe
         candidate_df = None

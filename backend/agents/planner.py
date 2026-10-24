@@ -164,6 +164,14 @@ class Planner:
         if len(matched) >= 3 or any(w in q for w in ("between them", "plot between", "compare them", "multivariate plot", "relationship between them", "breakdown between")):
             return {"intent": "custom", "confidence": 0.95}
 
+        # 4c. Explicit Univariate Analysis Request
+        if any(w in q for w in ("univariate", "single column analysis", "one variable analysis", "frequency distribution", "distribution of", "distribution plot")):
+            return {"intent": "distribution_analysis", "confidence": 0.98}
+
+        # 4d. Explicit Bivariate Analysis Request
+        if any(w in q for w in ("bivariate", "bi-variate", "two variable analysis", "two column analysis", "compare two columns", "relationship between")):
+            return {"intent": "relationship_analysis", "confidence": 0.98}
+
         # 5. Target variable, predictive drivers, and feature importance inquiries
         if any(w in q for w in ("target", "target variable", "predict", "predictive", "driver", "drivers", "importance", "important feature", "key feature", "influences")):
             return {"intent": "feature_importance", "confidence": 0.95}
@@ -174,31 +182,29 @@ class Planner:
                 return {"intent": "feature_importance", "confidence": 0.95}
             return {"intent": "correlation_analysis", "confidence": 0.95}
 
-        if "correlat" in q:
-            is_open = any(w in q for w in ("which", "what", "all", "top", "list", "find"))
+        if "correlat" in q or "heatmap" in q:
+            is_open = any(w in q for w in ("which", "what", "all", "top", "list", "find", "matrix", "map", "overall"))
             intent = "relationship_analysis" if (len(matched) == 2 and not is_open) else "correlation_analysis"
             return {"intent": intent, "confidence": 0.95}
 
         # 7. Unsupervised Clustering & Dimensionality Reduction (K-Means / PCA / Archetypes)
         # Note: Canned tool runs dataset-wide clustering; queries asking for plots/relationships between specific columns belong in custom sandbox.
-        if any(w in q for w in ("cluster", "clustering", "segmentation", "kmeans", "k-means", "pca", "unsupervised", "archetype", "archetypes")):
-            return {"intent": "multivariate", "confidence": 0.85}
-        if "multivariate" in q and not matched:
-            return {"intent": "multivariate", "confidence": 0.8}
+        if any(w in q for w in ("multivariate", "multi-variate", "cluster", "clustering", "segmentation", "kmeans", "k-means", "pca", "unsupervised", "archetype", "archetypes")):
+            return {"intent": "multivariate", "confidence": 0.95}
 
         # 8. Outliers & Health
         if any(w in q for w in ("outlier", "anomaly", "unusual", "health score")):
-            return {"intent": "outlier_detection", "confidence": 0.9}
+            return {"intent": "outlier_detection", "confidence": 0.95}
 
         # 9. Missing Values & Cleaning
         if any(w in q for w in ("missing", "null", "duplicate", "blank cells")):
-            return {"intent": "missing_value_analysis", "confidence": 0.9}
+            return {"intent": "missing_value_analysis", "confidence": 0.95}
         if any(w in q for w in ("clean", "impute", "sanitize", "cleaning")):
-            return {"intent": "data_cleaning", "confidence": 0.85}
+            return {"intent": "data_cleaning", "confidence": 0.95}
 
         # 10. Distribution of a Single Column
         if any(w in q for w in ("distribution", "spread", "histogram", "describe")):
-            return {"intent": "distribution_analysis" if len(matched) <= 1 else "relationship_analysis", "confidence": 0.85}
+            return {"intent": "distribution_analysis" if len(matched) <= 1 else "relationship_analysis", "confidence": 0.9}
 
         # 11. Simple Aggregates
         if any(w in q for w in _AGGREGATE_WORDS):
@@ -218,9 +224,9 @@ class Planner:
         if len(matched) >= 3:
             return {"intent": "custom", "confidence": 0.95}
         if len(matched) == 2:
-            return {"intent": "relationship_analysis", "confidence": 0.8}
+            return {"intent": "relationship_analysis", "confidence": 0.85}
         if len(matched) == 1:
-            return {"intent": "distribution_analysis", "confidence": 0.8}
+            return {"intent": "distribution_analysis", "confidence": 0.85}
 
         return {"intent": "custom", "confidence": 0.5}
 

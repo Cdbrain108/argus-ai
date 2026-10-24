@@ -1937,6 +1937,7 @@ def _cross_validated_score(model, X: pd.DataFrame, y: pd.Series, task: str) -> O
 
 def _choose_clusters(components: np.ndarray, requested) -> Tuple[int, str]:
     """Estimate k on a reproducible bounded sample; never exceed distinct points."""
+    from sklearn.cluster import KMeans
     from sklearn.metrics import silhouette_score
 
     unique = len(np.unique(components.round(10), axis=0))

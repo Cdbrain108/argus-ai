@@ -251,15 +251,21 @@ def run_univariate_tool(dataset_id: str, columns: Optional[List[str]] = None, bi
     }
 
 
-def run_bivariate_tool(dataset_id: str, col_a: str, col_b: str, aggregation: str = "auto") -> dict:
+def run_bivariate_tool(dataset_id: str, col_a: str = "", col_b: str = "", aggregation: str = "auto") -> dict:
     """Tool: run_bivariate_analysis"""
     from backend.services.dataset_service import get_dataset
     session = get_dataset(dataset_id)
     if session is None:
         raise ValueError(f"Dataset {dataset_id} not found")
-    if col_a not in session.df.columns or col_b not in session.df.columns:
-        raise ValueError(f"Unknown columns: {[c for c in (col_a, col_b) if c not in session.df.columns]}")
     df = session.cleaned_df if session.cleaned_df is not None else session.df
+    cols = list(df.columns)
+    if not cols:
+        raise ValueError("Dataset has no columns")
+    if not col_a or col_a not in cols:
+        col_a = cols[0]
+    if not col_b or col_b not in cols or col_b == col_a:
+        candidates = [c for c in cols if c != col_a]
+        col_b = candidates[0] if candidates else col_a
     result = run_bivariate_analysis(df, col_a, col_b, aggregation=aggregation)
     stats = result.get("statistics", {})
     viz = result.get("visualization", {})

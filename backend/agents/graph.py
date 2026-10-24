@@ -174,9 +174,28 @@ def canned_tool_node(state: AnalystState) -> Dict[str, Any]:
     columns = list(state.get("columns", []))
     profile = state["profile"]
 
+    # Ensure robust column candidates for canned statistical tools
     if intent == "relationship_analysis" and len(columns) < 2:
+        target = profile.get("target_variable")
         numeric = profile.get("numeric_columns", [])
-        columns = columns + [c for c in numeric if c not in columns][: 2 - len(columns)]
+        cats = profile.get("categorical_columns", [])
+        all_cols = [c.get("name", "") for c in profile.get("column_summary", []) if c.get("name")]
+        pool = ([target] if target else []) + numeric + cats + all_cols
+        for c in pool:
+            if c and c not in columns:
+                columns.append(c)
+            if len(columns) >= 2:
+                break
+    elif intent == "distribution_analysis" and not columns:
+        target = profile.get("target_variable")
+        numeric = profile.get("numeric_columns", [])
+        cats = profile.get("categorical_columns", [])
+        all_cols = [c.get("name", "") for c in profile.get("column_summary", []) if c.get("name")]
+        pool = ([target] if target else []) + numeric + cats + all_cols
+        for c in pool:
+            if c:
+                columns.append(c)
+                break
 
     tool_out = route_tool(intent, dataset_id, columns, {"profile": profile, "apply_cleaning": intent == "data_cleaning"})
     if tool_out.get("error"):
@@ -605,18 +624,42 @@ def sandbox_code_node(state: AnalystState) -> Dict[str, Any]:
     try:
         raw = chat_completion(
             prompt,
-            system_prompt="You are an expert Python data analyst who writes clean, safe pandas analyses and structures rich visualization data. Return valid JSON only.",
+            system_prompt="You are an expert Python data analyst who writes clean, safe pandas analyses and structures rich visualization data. Return valid JSON only with one key 'code'.",
             max_tokens=2048,
             temperature=0,
             timeout=codegen_timeout(),
         )
-        match = re.search(r"\{.*\}", raw, re.DOTALL)
-        payload = json.loads(match.group(0)) if match else {}
-        code = payload.get("code", "")
-        if not code and "code" in raw:
-            cb_match = re.search(r"```(?:python)?\s*\n(.*?)```", raw, re.DOTALL)
-            if cb_match:
-                code = cb_match.group(1).strip()
+        code = ""
+        # Tier 1: Check for fenced code block (```python ... ```)
+        cb_match = re.search(r"```(?:python)?\s*\n(.*?)```", raw, re.DOTALL)
+        if cb_match:
+            candidate = cb_match.group(1).strip()
+            if candidate.startswith("{") and candidate.endswith("}"):
+                try:
+                    p = json.loads(candidate)
+                    if isinstance(p, dict) and "code" in p:
+                        candidate = p["code"]
+                except Exception:
+                    pass
+            code = candidate
+
+        # Tier 2: Check for JSON object {"code": "..."}
+        if not code:
+            json_match = re.search(r"\{[\s\S]*\}", raw)
+            if json_match:
+                try:
+                    payload = json.loads(json_match.group(0))
+                    if isinstance(payload, dict):
+                        code = payload.get("code", "")
+                except Exception:
+                    pass
+
+        # Tier 3: Check for directly runnable Python code
+        if not code:
+            lines = [l for l in raw.strip().splitlines() if not l.startswith("```")]
+            candidate = "\n".join(lines).strip()
+            if any(k in candidate for k in ("df[", "result =", "result=", "import ", "pd.", "np.")):
+                code = candidate
     except Exception as exc:
         fallback = _run_multivariate_fallback()
         if fallback:
@@ -708,14 +751,40 @@ def self_correction_node(state: AnalystState) -> Dict[str, Any]:
     try:
         raw_fix = chat_completion(
             fix_prompt,
-            system_prompt="You fix pandas errors and write reliable, bug-free data analysis code. Return JSON with one key 'code'.",
-            max_tokens=700,
+            system_prompt="You fix pandas errors and write reliable, bug-free data analysis code. Return valid JSON only with one key 'code'.",
+            max_tokens=1000,
             temperature=0,
             timeout=codegen_timeout(),
         )
-        match_fix = re.search(r"\{.*\}", raw_fix, re.DOTALL)
-        fix_payload = json.loads(match_fix.group(0)) if match_fix else {}
-        fix_code = fix_payload.get("code", "")
+        fix_code = ""
+        cb_match = re.search(r"```(?:python)?\s*\n(.*?)```", raw_fix, re.DOTALL)
+        if cb_match:
+            candidate = cb_match.group(1).strip()
+            if candidate.startswith("{") and candidate.endswith("}"):
+                try:
+                    p = json.loads(candidate)
+                    if isinstance(p, dict) and "code" in p:
+                        candidate = p["code"]
+                except Exception:
+                    pass
+            fix_code = candidate
+
+        if not fix_code:
+            match_fix = re.search(r"\{[\s\S]*\}", raw_fix)
+            if match_fix:
+                try:
+                    fix_payload = json.loads(match_fix.group(0))
+                    if isinstance(fix_payload, dict):
+                        fix_code = fix_payload.get("code", "")
+                except Exception:
+                    pass
+
+        if not fix_code:
+            lines = [l for l in raw_fix.strip().splitlines() if not l.startswith("```")]
+            candidate = "\n".join(lines).strip()
+            if any(k in candidate for k in ("df[", "result =", "result=", "import ", "pd.", "np.")):
+                fix_code = candidate
+
         if fix_code.strip():
             fix_sandbox = run_sandboxed_analysis(fix_code, df)
             res = fix_sandbox.to_dict()
@@ -766,16 +835,20 @@ def explainer_node(state: AnalystState) -> Dict[str, Any]:
     # for a redundant 3-5s LLM network round-trip.
     raw_insights = analysis.get("insights") or []
     clean_insights = [str(i).strip() for i in raw_insights if str(i).strip()]
-    if clean_insights and sum(len(i) for i in clean_insights) >= 30:
-        reply = " ".join(clean_insights)
+    title = analysis.get("title") or analysis.get("analysis_name") or "Statistical Analysis"
+    if clean_insights and sum(len(i) for i in clean_insights) >= 20:
+        if len(clean_insights) == 1:
+            reply = f"**{title}**\n\n{clean_insights[0]}"
+        else:
+            bullets = "\n".join(f"• {item}" for item in clean_insights)
+            reply = f"**{title}**\n\n{bullets}"
         analysis["explanation"] = reply
         steps = list(state.get("status_steps", [])) + ["Executive synthesis ready"]
         return {"reply": reply, "analysis": analysis, "status_steps": steps}
 
     if not is_configured():
-        title = analysis.get("title") or analysis.get("analysis_name") or "Analysis"
-        insights_str = " ".join(clean_insights[:3]) if clean_insights else ""
-        reply = f"Analysis completed: {title}. {insights_str}".strip()
+        insights_str = "\n".join(f"• {i}" for i in clean_insights[:4]) if clean_insights else ""
+        reply = f"**{title}**\n\n{insights_str}".strip() if insights_str else f"Analysis completed: **{title}**."
         analysis["explanation"] = reply
         steps = list(state.get("status_steps", [])) + ["Preparing executive explanation"]
         return {"reply": reply, "analysis": analysis, "status_steps": steps}

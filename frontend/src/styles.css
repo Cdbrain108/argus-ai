@@ -7657,4 +7657,69 @@ select {
   }
 }
 
+/* ── GENERATION ANCHOR & INSTANT FOCUS STYLING ── */
+.generation-anchor {
+  scroll-margin-top: 30px;
+  width: 100%;
+}
+
+.generation-progress-panel {
+  padding: 24px;
+  margin-top: 20px;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.09), rgba(127, 119, 221, 0.07), rgba(15, 23, 42, 0.95));
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), 0 0 24px rgba(249, 115, 22, 0.15);
+  border-radius: 14px;
+  animation: result-panel-in 0.4s var(--ease) both;
+}
+
+.generation-progress-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.generation-spinner-box {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(249, 115, 22, 0.14);
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  flex-shrink: 0;
+}
+
+.generation-progress-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 18px;
+  position: relative;
+}
+
+.generation-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 35%;
+  background: linear-gradient(90deg, #f97316, #eab308, #38bdf8);
+  border-radius: 999px;
+  animation: gen-progress-pulse 1.3s ease-in-out infinite;
+}
+
+@keyframes gen-progress-pulse {
+  0% { left: -35%; width: 25%; }
+  50% { width: 50%; }
+  100% { left: 110%; width: 25%; }
+}
+
+.chat-messages {
+  scroll-behavior: smooth;
+}
+
+
 

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Bot,
@@ -121,6 +121,20 @@ const BEGINNER_TERMS = {
   kurtosis: 'Outlier Severity — Heaviness of extreme tail values',
   iqr: 'Middle Spread — Value range covering the central 50% of rows',
   eta_squared: 'Group Influence — How strongly category groups differ from each other',
+}
+
+function smoothFocusElement(element, offset = 24) {
+  if (!element) return
+  try {
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  } catch (e) {}
+  const mainEl = document.querySelector('.main-area')
+  if (mainEl && element) {
+    const rect = element.getBoundingClientRect()
+    const mainRect = mainEl.getBoundingClientRect()
+    const targetScroll = mainEl.scrollTop + (rect.top - mainRect.top) - offset
+    mainEl.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' })
+  }
 }
 
 function App() {
@@ -1839,6 +1853,28 @@ function AnalystPage(props) {
   const isMobileScreen = useMediaQuery('(max-width: 860px)')
   const [mobileTab, setMobileTab] = useState('chat') // 'chat' | 'schema'
   const textareaRef = useRef(null)
+  const chatMessagesRef = useRef(null)
+  const messagesEndRef = useRef(null)
+
+  const scrollToBottom = useCallback((smooth = true) => {
+    requestAnimationFrame(() => {
+      if (messagesEndRef.current) {
+        try {
+          messagesEndRef.current.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' })
+        } catch (e) {}
+      }
+      if (chatMessagesRef.current) {
+        chatMessagesRef.current.scrollTo({
+          top: chatMessagesRef.current.scrollHeight,
+          behavior: smooth ? 'smooth' : 'auto',
+        })
+      }
+    })
+  }, [])
+
+  useEffect(() => {
+    scrollToBottom(true)
+  }, [messages, busy, scrollToBottom])
 
   useEffect(() => {
     setContextTab('schema')
@@ -1865,6 +1901,7 @@ function AnalystPage(props) {
     setLocalDraft('')
     setDraft?.('')
     sendMessage(query)
+    setTimeout(() => scrollToBottom(true), 50)
   }
 
   const suggestions = dataset ? [
@@ -1984,7 +2021,7 @@ function AnalystPage(props) {
         {/* Center Conversational Workspace */}
         {mobileTab === 'chat' && (
           <div className="chat-panel">
-            <div className="chat-messages">
+            <div className="chat-messages" ref={chatMessagesRef}>
             {messages.length === 0 && (
               <div className="starter">
                 <MessageSquare size={24} />
@@ -2045,6 +2082,7 @@ function AnalystPage(props) {
             ))}
 
             {busy && <ReasoningProgressTicker />}
+            <div ref={messagesEndRef} className="messages-end-anchor" style={{ height: 1, minHeight: 1 }} />
           </div>
 
           {/* Quick Column Mention Bar */}
@@ -3059,6 +3097,25 @@ function ExplorePage({
   const [multivariateTarget, setMultivariateTarget] = useState('')
   const [clusterCount, setClusterCount] = useState('auto')
   const [result, setResult] = useState(null)
+  const generationRef = useRef(null)
+
+  const scrollToGeneration = useCallback(() => {
+    setTimeout(() => {
+      if (generationRef.current) {
+        smoothFocusElement(generationRef.current, 24)
+      }
+    }, 60)
+  }, [])
+
+  useEffect(() => {
+    if (result) {
+      setTimeout(() => {
+        if (generationRef.current) {
+          smoothFocusElement(generationRef.current, 24)
+        }
+      }, 70)
+    }
+  }, [result])
 
   const columns = dataset?.column_names || []
   const supported = profile?.capabilities?.supported || {}
@@ -3146,6 +3203,7 @@ function ExplorePage({
     setColA(newCol)
     setBusy(true)
     setError('')
+    scrollToGeneration()
     try {
       const resp = await api.runAnalysis({
         dataset_id: dataset.dataset_id,
@@ -3173,6 +3231,7 @@ function ExplorePage({
   async function runExplore() {
     setBusy(true)
     setError('')
+    scrollToGeneration()
     try {
       let resp
       if (tab === 'univariate') {
@@ -3647,53 +3706,86 @@ function ExplorePage({
       </div>
       )}
 
-      {result && (
-        <div className="panel result-panel" key={result.analysis_id}>
-          {/* Result Overview Header */}
-          <div className="explore-result-header">
-            <div className="explore-result-meta">
-              <span className="eyebrow">ANALYSIS RESULT</span>
-              <h3>{result.title || result.analysis_name || 'Statistical Analysis'}</h3>
-            </div>
-            <div className="explore-result-badges">
-              <span className="type-pill" style={{ color: 'var(--cyan)', borderColor: 'rgba(56,189,248,0.3)' }}>
-                {result.analysis_type?.replaceAll('_', ' ').toUpperCase() || 'EDA'}
-              </span>
-              {result.insights?.length > 0 && (
-                <span className="type-pill" style={{ color: 'var(--green)', borderColor: 'rgba(29,158,117,0.3)' }}>
-                  {result.insights.length} key insights
+      {/* Generation Focus Anchor & Active Results */}
+      <div ref={generationRef} className="generation-anchor">
+        {busy && (
+          <div className="panel generation-progress-panel">
+            <div className="generation-progress-header">
+              <div className="generation-spinner-box">
+                <LoaderCircle size={24} className="spin" color="#f97316" />
+              </div>
+              <div>
+                <span className="eyebrow" style={{ color: 'var(--orange-soft)', letterSpacing: '0.08em' }}>
+                  ANALYSIS ENGINE COMPUTING STATS
                 </span>
-              )}
+                <h4 style={{ margin: '3px 0 0', color: '#ffffff', fontSize: 16 }}>
+                  {tab === 'univariate'
+                    ? `Generating Univariate Distribution ${univariateScope === 'all' ? `across all ${columns.length} columns` : `for ${colA || columns[0]}`}`
+                    : tab === 'bivariate'
+                    ? `Generating Bivariate Relationship between ${colA || columns[0]} & ${colB || columns[1] || columns[0]}`
+                    : tab === 'correlation'
+                    ? `Computing Correlation Heatmap & Association Matrix (${correlationMethod.toUpperCase()})`
+                    : `Computing Multivariate Clusters & Predictive Drivers (${clusterCount} clusters)`}
+                </h4>
+                <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: 13 }}>
+                  Calculating statistical distributions, variance metrics, Tukey IQR fences, and preparing visual charts...
+                </p>
+              </div>
+            </div>
+            <div className="generation-progress-track">
+              <div className="generation-progress-bar" />
             </div>
           </div>
-          <AnalysisResultCard
-            result={result}
-            beginnerMode={beginnerMode}
-            hideHeader={true}
-            onSelectColumn={handleSwitchColumn}
-            alternativeCols={columns.filter((c) => !isIdColumn(c))}
-            onExplainFurther={() => {
-              setPage?.('analyst')
-              let prompt = ''
-              if (result.analysis_type === 'multivariate') {
-                const targetName = multivariateTarget || result.statistics?.target || 'target outcome'
-                prompt = `Explain the multivariate analysis and natural clusters discovered in this dataset. What are the distinct archetypes for each cluster (like Group 0, Group 1, etc.), which specific features drive the differences, and how does this relate to predicting ${targetName}? What strategic actions or segmentation strategies do you recommend?`
-              } else if (result.analysis_type === 'bivariate') {
-                prompt = `Explain the bivariate relationship between ${colA} and ${colB} in detail. Does the data show meaningful correlation, variance across groups, or anomalies? What are the key business takeaways?`
-              } else if (result.analysis_type === 'correlation') {
-                prompt = `Analyze the correlation matrix across these columns. Which variables exhibit strong collinearity, what risks or opportunities does that reveal, and which features should be prioritized or pruned?`
-              } else {
-                const target = colA || columns[0]
-                prompt = `Analyze the univariate distribution of ${target} in detail. What are the key outliers, variance, skewness, and statistical takeaways?`
-              }
-              sendMessage?.(prompt)
-            }}
-            onExplore={() => {
-              setTab(tab === 'univariate' ? 'bivariate' : 'univariate')
-            }}
-          />
-        </div>
-      )}
+        )}
+
+        {result && (
+          <div className="panel result-panel" key={result.analysis_id}>
+            {/* Result Overview Header */}
+            <div className="explore-result-header">
+              <div className="explore-result-meta">
+                <span className="eyebrow">ANALYSIS RESULT</span>
+                <h3>{result.title || result.analysis_name || 'Statistical Analysis'}</h3>
+              </div>
+              <div className="explore-result-badges">
+                <span className="type-pill" style={{ color: 'var(--cyan)', borderColor: 'rgba(56,189,248,0.3)' }}>
+                  {result.analysis_type?.replaceAll('_', ' ').toUpperCase() || 'EDA'}
+                </span>
+                {result.insights?.length > 0 && (
+                  <span className="type-pill" style={{ color: 'var(--green)', borderColor: 'rgba(29,158,117,0.3)' }}>
+                    {result.insights.length} key insights
+                  </span>
+                )}
+              </div>
+            </div>
+            <AnalysisResultCard
+              result={result}
+              beginnerMode={beginnerMode}
+              hideHeader={true}
+              onSelectColumn={handleSwitchColumn}
+              alternativeCols={columns.filter((c) => !isIdColumn(c))}
+              onExplainFurther={() => {
+                setPage?.('analyst')
+                let prompt = ''
+                if (result.analysis_type === 'multivariate') {
+                  const targetName = multivariateTarget || result.statistics?.target || 'target outcome'
+                  prompt = `Explain the multivariate analysis and natural clusters discovered in this dataset. What are the distinct archetypes for each cluster (like Group 0, Group 1, etc.), which specific features drive the differences, and how does this relate to predicting ${targetName}? What strategic actions or segmentation strategies do you recommend?`
+                } else if (result.analysis_type === 'bivariate') {
+                  prompt = `Explain the bivariate relationship between ${colA} and ${colB} in detail. Does the data show meaningful correlation, variance across groups, or anomalies? What are the key business takeaways?`
+                } else if (result.analysis_type === 'correlation') {
+                  prompt = `Analyze the correlation matrix across these columns. Which variables exhibit strong collinearity, what risks or opportunities does that reveal, and which features should be prioritized or pruned?`
+                } else {
+                  const target = colA || columns[0]
+                  prompt = `Analyze the univariate distribution of ${target} in detail. What are the key outliers, variance, skewness, and statistical takeaways?`
+                }
+                sendMessage?.(prompt)
+              }}
+              onExplore={() => {
+                setTab(tab === 'univariate' ? 'bivariate' : 'univariate')
+              }}
+            />
+          </div>
+        )}
+      </div>
     </section>
   )
 }
@@ -3717,12 +3809,32 @@ function CleaningPage({
   const cleaningResult = propCleaningResult !== undefined ? propCleaningResult : localCleaningResult
   const setCleaningResult = propSetCleaningResult || setLocalCleaningResult
   const [busy, setBusy] = useState(false)
+  const cleaningTargetRef = useRef(null)
+
+  const scrollToCleaning = useCallback(() => {
+    setTimeout(() => {
+      if (cleaningTargetRef.current) {
+        smoothFocusElement(cleaningTargetRef.current, 24)
+      }
+    }, 60)
+  }, [])
+
+  useEffect(() => {
+    if (scanData || cleaningResult) {
+      setTimeout(() => {
+        if (cleaningTargetRef.current) {
+          smoothFocusElement(cleaningTargetRef.current, 24)
+        }
+      }, 70)
+    }
+  }, [scanData, cleaningResult])
 
   if (!dataset) return <EmptyState onUpload={onUpload} onDemo={onDemo} />
 
   async function handleScan() {
     setBusy(true)
     setError('')
+    scrollToCleaning()
     try {
       const resp = await api.runCleaning(dataset.dataset_id)
       setScanData(resp.statistics || resp)
@@ -3737,6 +3849,7 @@ function CleaningPage({
   async function handleApply() {
     setBusy(true)
     setError('')
+    scrollToCleaning()
     try {
       const resp = await api.applyCleaning(dataset.dataset_id)
       setCleaningResult(resp)
@@ -3774,7 +3887,7 @@ function CleaningPage({
         </button>
       </div>
 
-      <div className="cleaning-workflow-strip" aria-label="Cleaning workflow">
+      <div ref={cleaningTargetRef} className="cleaning-workflow-strip generation-anchor" aria-label="Cleaning workflow">
         <div className="cleaning-workflow-step active"><span>01</span><strong>Scan</strong><small>Find issues</small></div>
         <i className="workflow-connector" />
         <div className={`cleaning-workflow-step ${scanData ? 'active' : ''}`}><span>02</span><strong>Review</strong><small>Inspect impact</small></div>
@@ -3931,6 +4044,25 @@ function FeaturesPage({ dataset, setError, onUpload, onDemo }) {
   const [result, setResult] = useState(null)
   const [target, setTarget] = useState('')
   const [busy, setBusy] = useState(false)
+  const featuresTargetRef = useRef(null)
+
+  const scrollToFeatures = useCallback(() => {
+    setTimeout(() => {
+      if (featuresTargetRef.current) {
+        smoothFocusElement(featuresTargetRef.current, 24)
+      }
+    }, 60)
+  }, [])
+
+  useEffect(() => {
+    if (result) {
+      setTimeout(() => {
+        if (featuresTargetRef.current) {
+          smoothFocusElement(featuresTargetRef.current, 24)
+        }
+      }, 70)
+    }
+  }, [result])
 
   if (!dataset) return <EmptyState onUpload={onUpload} onDemo={onDemo} />
 
@@ -3939,6 +4071,7 @@ function FeaturesPage({ dataset, setError, onUpload, onDemo }) {
   async function runDiscovery() {
     setBusy(true)
     setError('')
+    scrollToFeatures()
     try {
       const resp = await api.runFeatures(dataset.dataset_id, target)
       setResult(resp)
@@ -3982,8 +4115,33 @@ function FeaturesPage({ dataset, setError, onUpload, onDemo }) {
         <div className="feature-banner-points"><span>01 Detect</span><span>02 Rank</span><span>03 Explain</span></div>
       </div>
 
-      {result && (
-        <div className="panel result-panel">
+      <div ref={featuresTargetRef} className="generation-anchor">
+        {busy && (
+          <div className="panel generation-progress-panel">
+            <div className="generation-progress-header">
+              <div className="generation-spinner-box">
+                <LoaderCircle size={24} className="spin" color="#f97316" />
+              </div>
+              <div>
+                <span className="eyebrow" style={{ color: 'var(--orange-soft)', letterSpacing: '0.08em' }}>
+                  FEATURE DISCOVERY IN PROGRESS
+                </span>
+                <h4 style={{ margin: '3px 0 0', color: '#ffffff', fontSize: 16 }}>
+                  {target ? `Ranking Predictive Drivers for '${target}'` : 'Auto-detecting Target & Ranking Feature Importances...'}
+                </h4>
+                <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: 13 }}>
+                  Training Random Forest and Gradient-boosted ensembles to isolate the highest-leverage predictive signals...
+                </p>
+              </div>
+            </div>
+            <div className="generation-progress-track">
+              <div className="generation-progress-bar" />
+            </div>
+          </div>
+        )}
+
+        {result && (
+          <div className="panel result-panel">
           <FeatureImportanceChart data={result.statistics} target={target || result.statistics?.target} />
           <VisualizationPlan plan={result.visualization_plan} />
           {/* The reading of the ranking itself, then the reading of the run */}
@@ -4003,6 +4161,7 @@ function FeaturesPage({ dataset, setError, onUpload, onDemo }) {
           )}
         </div>
       )}
+      </div>
     </section>
   )
 }
