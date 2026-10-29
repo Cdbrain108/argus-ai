@@ -18,6 +18,7 @@ from backend.analysis.adapters import (
     run_feature_importance,
     detect_target_variable,
     get_col_type,
+    _correlation_strength,
 )
 from backend.analysis.cleaning_adapter import scan_dataset, clean_dataset, get_cleaning_summary
 from backend.models.analysis import AnalysisType
@@ -375,15 +376,103 @@ def run_bivariate_tool(dataset_id: str, col_a: str = "", col_b: str = "", aggreg
     }
 
 
-def run_correlation_tool(dataset_id: str, top_n: int = 10, method: str = "pearson", target_column: Optional[str] = None) -> dict:
+def run_correlation_tool(
+    dataset_id: str,
+    top_n: int = 10,
+    method: str = "pearson",
+    target_column: Optional[str] = None,
+    columns: Optional[List[str]] = None,
+) -> dict:
     """Tool: run_correlation_analysis"""
     from backend.services.dataset_service import get_dataset
+    from scipy.stats import pearsonr
     session = get_dataset(dataset_id)
     if session is None:
         raise ValueError(f"Dataset {dataset_id} not found")
-    result = run_correlation_analysis(_frame(session), top_n, method=method)
+    df = _frame(session)
+    result = run_correlation_analysis(df, top_n, method=method)
     pairs = result.get("pairs", [])
     insights: List[str] = []
+
+    # If specific columns were requested (e.g. ['Survived', 'Fare']):
+    if columns and len(columns) >= 2:
+        c1, c2 = columns[0], columns[1]
+        c1_low, c2_low = c1.casefold(), c2.casefold()
+
+        # Check if this exact pair exists in calculated pairs
+        pair_match = next((
+            p for p in pairs
+            if (p["col_a"].casefold() == c1_low and p["col_b"].casefold() == c2_low)
+            or (p["col_a"].casefold() == c2_low and p["col_b"].casefold() == c1_low)
+        ), None)
+
+        if pair_match:
+            r = pair_match.get("pearson_r") if pair_match.get("pearson_r") is not None else pair_match.get("correlation", 0.0)
+            rho = pair_match.get("spearman_rho")
+            strength = pair_match.get("strength", "moderate")
+            n_samples = pair_match.get("sample_size", len(df))
+
+            p_val_str = ""
+            try:
+                valid = df[[pair_match["col_a"], pair_match["col_b"]]].dropna()
+                s_a = pd.to_numeric(valid[pair_match["col_a"]], errors="coerce")
+                s_b = pd.to_numeric(valid[pair_match["col_b"]], errors="coerce")
+                valid_num = pd.DataFrame({"a": s_a, "b": s_b}).dropna()
+                if len(valid_num) > 2 and valid_num["a"].nunique() > 1 and valid_num["b"].nunique() > 1:
+                    _, p_val = pearsonr(valid_num["a"], valid_num["b"])
+                    p_val_str = " (p < 0.001)" if p_val < 0.001 else f" (p = {p_val:.4f})"
+            except Exception:
+                pass
+
+            title = f"Correlation: {pair_match['col_a']} vs. {pair_match['col_b']} (r = {r:+.3f})"
+            insights.append(
+                f"Pearson correlation between '{pair_match['col_a']}' and '{pair_match['col_b']}' is r = {r:+.4f}{p_val_str}, indicating a {strength} relationship."
+            )
+            if rho is not None:
+                insights.append(
+                    f"Spearman rank correlation is rho = {rho:+.4f} across {n_samples} complete records."
+                )
+            if pair_match.get("nonlinear"):
+                insights.append(pair_match["note"])
+
+            if abs(r) < 0.1:
+                insights.append(f"Negligible linear association. Changes in '{pair_match['col_a']}' do not reliably correlate with '{pair_match['col_b']}'.")
+            elif r > 0:
+                insights.append(f"Positive correlation: higher values of '{pair_match['col_a']}' are associated with higher values of '{pair_match['col_b']}'.")
+            else:
+                insights.append(f"Negative correlation: higher values of '{pair_match['col_a']}' are associated with lower values of '{pair_match['col_b']}'.")
+
+            # Prioritize pair at the top of pairs list
+            result["pairs"] = [pair_match] + [p for p in pairs if p != pair_match]
+            result["target_column"] = pair_match["col_a"]
+            result["highlight_pair"] = [pair_match["col_a"], pair_match["col_b"]]
+
+            return {
+                "analysis_id": _make_id(),
+                "analysis_type": "correlation",
+                "title": title,
+                "statistics": result,
+                "insights": insights,
+                "warnings": result.get("warnings", []),
+                "methodology": f"Bivariate correlation computed using Pearson r and Spearman ρ on complete pairs (n = {n_samples}).",
+            }
+        elif c1 in df.columns and c2 in df.columns:
+            assoc = result.get("association", {})
+            assoc_mat = assoc.get("matrix", {})
+            val = assoc_mat.get(c1, {}).get(c2) or assoc_mat.get(c2, {}).get(c1)
+            if val is not None:
+                title = f"Association: {c1} vs. {c2} (score = {val:.3f})"
+                insights.append(f"The statistical association between '{c1}' and '{c2}' is {val:.4f} (scale 0 to 1).")
+                insights.append("Computed using Cramér's V and correlation ratio (eta) for mixed categorical/numeric columns.")
+                return {
+                    "analysis_id": _make_id(),
+                    "analysis_type": "correlation",
+                    "title": title,
+                    "statistics": result,
+                    "insights": insights,
+                    "warnings": result.get("warnings", []),
+                    "methodology": f"Mixed association analysis between '{c1}' and '{c2}'.",
+                }
 
     # If a specific target column was requested, prioritize pairs with that target
     if target_column and pairs:
@@ -409,7 +498,7 @@ def run_correlation_tool(dataset_id: str, top_n: int = 10, method: str = "pearso
             f"Screened {result.get('all_pairs_count', len(pairs))} pairs across "
             f"{len(result.get('numeric_columns', []))} numeric, boolean and date columns."
         )
-    else:
+    elif not pairs and not insights:
         insights.append("No two columns had enough varying numeric values to correlate.")
     for pair in result.get("nonlinear_pairs", [])[:2]:
         insights.append(

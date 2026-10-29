@@ -45,6 +45,8 @@ def route_tool(intent: str, dataset_id: str, columns: list, extra: dict | None =
         kwargs = {"top_n": extra.get("top_n", 10)}
         if columns:
             kwargs["target_column"] = columns[0]
+            if len(columns) >= 2:
+                kwargs["columns"] = columns[:2]
 
     try:
         return execute_tool(tool_name, dataset_id, **kwargs)

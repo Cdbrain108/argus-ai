@@ -1501,6 +1501,20 @@ def run_bivariate_analysis(
         if eta_sq is not None:
             stats.update({"eta_squared": eta_sq, "f_statistic": f_stat, "p_value": p_value})
 
+    if frame[group_col].nunique() == 2 and is_val_numeric:
+        try:
+            vals = frame[group_col].dropna().unique()
+            bin_map = {vals[0]: 0, vals[1]: 1}
+            numeric_bin = frame[group_col].map(bin_map).astype(float)
+            r_pb, p_pb = pearsonr(numeric_bin, frame[value_col].astype(float))
+            stats["pearson_r"] = round(float(r_pb), 4)
+            stats["point_biserial_r"] = round(float(r_pb), 4)
+            stats["correlation"] = round(float(r_pb), 4)
+            stats["correlation_p_value"] = round(float(p_pb), 6)
+            stats["correlation_strength"] = _correlation_strength(r_pb)
+        except Exception:
+            pass
+
     if group_role in ("categorical", "binary") and value_role in ("categorical", "binary"):
         chi2, p_chi, cv = _chi_square_test(frame, group_col, value_col)
         if chi2 is not None:

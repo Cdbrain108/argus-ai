@@ -185,15 +185,26 @@ class Planner:
         if any(w in q for w in ("univariate", "single column analysis", "one variable analysis", "frequency distribution", "distribution of", "distribution plot")):
             return {"intent": "distribution_analysis", "confidence": 0.98}
 
-        # 4d. Explicit Bivariate Analysis Request
+        # 4d. Explicit Correlation Request (PRIORITIZED BEFORE BIVARIATE / VIZ KW)
+        is_correlation_query = any(w in q for w in (
+            "correlation", "correlate", "correlations", "correlated", "pearson", "spearman", "r-value", "r value", "association between"
+        ))
+        if is_correlation_query:
+            # If user asks dataset-wide "which features influence / correlate with target"
+            is_feature_ranking = any(w in q for w in ("which", "what", "all", "top", "rank", "driver", "importance", "influence")) and has_target_mention
+            if is_feature_ranking:
+                return {"intent": "feature_importance", "confidence": 0.95}
+            return {"intent": "correlation_analysis", "confidence": 0.98}
+
+        # 4e. Explicit Bivariate Analysis Request
         if any(w in q for w in ("bivariate", "bi-variate", "two variable analysis", "two column analysis", "compare two columns", "relationship between")):
             return {"intent": "relationship_analysis", "confidence": 0.98}
 
-        # 4e. Graph / Visualizations / Comparisons involving target or specific columns
+        # 4f. Graph / Visualizations / Comparisons involving target or specific columns
         has_viz_kw = any(w in q for w in (
             "graph", "plot", "chart", "scatter", "histogram", "bar chart", "line chart", "box plot",
             "draw", "visualize", "show graph", "make a graph", "create a graph", "plot a graph",
-            "between", "btw", "vs", "versus", "against", "compare with", "compare"
+            "vs", "versus", "against", "compare with", "compare"
         ))
         has_target_mention = any(w in q for w in (
             "target", "target variable", "outcome variable", "outcome", "dependent variable", "label"
@@ -222,9 +233,7 @@ class Planner:
             return {"intent": "correlation_analysis", "confidence": 0.95}
 
         if "correlat" in q or "heatmap" in q:
-            is_open = any(w in q for w in ("which", "what", "all", "top", "list", "find", "matrix", "map", "overall"))
-            intent = "relationship_analysis" if (len(matched) == 2 and not is_open) else "correlation_analysis"
-            return {"intent": intent, "confidence": 0.95}
+            return {"intent": "correlation_analysis", "confidence": 0.95}
 
         # 7. Unsupervised Clustering & Dimensionality Reduction (K-Means / PCA / Archetypes)
         # Note: Canned tool runs dataset-wide clustering; queries asking for plots/relationships between specific columns belong in custom sandbox.
