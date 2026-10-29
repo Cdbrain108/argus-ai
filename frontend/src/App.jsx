@@ -1931,7 +1931,7 @@ function AnalystPage(props) {
   const [colSearch, setColSearch] = useState('')
   const [colTypeFilter, setColTypeFilter] = useState('all') // 'all' | 'numeric' | 'categorical' | 'boolean' | 'identifier'
   const [localDraft, setLocalDraft] = useState(draft || '')
-  const isMobileScreen = useMediaQuery('(max-width: 860px)')
+  const isMobileScreen = useMediaQuery('(max-width: 900px)', typeof window !== 'undefined' ? window.innerWidth <= 900 : false)
   const [mobileTab, setMobileTab] = useState('chat') // 'chat' | 'schema'
   const textareaRef = useRef(null)
   const chatMessagesRef = useRef(null)

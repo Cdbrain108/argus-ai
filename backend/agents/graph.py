@@ -117,12 +117,24 @@ def conversational_node(state: AnalystState) -> Dict[str, Any]:
                 f"and predictive modeling. You can ask me to analyze distributions, compare features, inspect correlations, "
                 f"or uncover predictive drivers!"
             )
-        elif any(w in low for w in ("what is this project", "what is argus", "purpose", "what does this project do", "what is this for", "what can you do")):
+        elif any(w in low for w in (
+            "summary of project", "summary of the project", "summary of this project",
+            "project summary", "summarize project", "summarize the project", "summarize this project",
+            "overview of project", "overview of the project", "overview of this project",
+            "about this project", "about the project", "what is this project", "what is argus",
+            "purpose of this project", "purpose of the project", "what does this project do",
+            "what is this for", "what can you do", "explain this project", "tell me about argus"
+        )):
             reply = (
-                "**ARGUS** is an AI-powered Automated Exploratory Data Analysis (EDA) platform. "
-                "It is built to help data scientists and analysts instantly profile raw datasets, uncover data hygiene issues "
-                "and missing values, compute statistical correlations, rank predictive feature drivers, execute dynamic "
-                "computational queries in a safe Python sandbox, and provide grounded plain-English explanations for every pattern and graph."
+                "### 🛰️ ARGUS — Automated Exploratory Data Analysis Platform\n\n"
+                "**ARGUS** was designed and developed by **Anuj Kesharwani** as a production-grade, "
+                "AI-powered Automated Exploratory Data Analysis & Intelligent Analytics Platform.\n\n"
+                "**Core Capabilities & Architecture:**\n"
+                "• **Deterministic EDA Engines**: Instantly computes Tukey outlier fences, statistical distributions, missing value matrix, and Pearson/Spearman correlation networks without hallucinations.\n"
+                "• **Target Feature Discovery**: Automatically scores predictive feature importance and mutual information against your target variable.\n"
+                "• **Safe Python AST Sandbox**: Dynamically writes and runs verified pandas/numpy/scipy code for custom group-bys, formulas, and multi-variable visualizations.\n"
+                "• **Self-Correcting LangGraph Multi-Agent**: Orchestrates planner, tool routing, sandbox execution, error reflection, and executive plain-English synthesis.\n"
+                "• **All-Device Responsive Workspace**: High-performance UI optimized for ultrawide monitors, laptops, iPads/tablets, and mobile phones."
             )
         elif any(w in low for w in ("who are you", "what are you", "your name")):
             reply = (
@@ -605,7 +617,12 @@ def sandbox_code_node(state: AnalystState) -> Dict[str, Any]:
             c = (turn.get("content") or "").strip()
             if c:
                 history_lines.append(f"{r.capitalize()}: {c[:220]}")
-    history_ctx = ("\nRecent Conversation History:\n" + "\n".join(history_lines) + "\n\n") if history_lines else ""
+    history_ctx = (
+        "\nRecent Conversation History (REFERENCE ONLY):\n" + "\n".join(history_lines) +
+        "\n\nCONTEXT BOUNDARY RULES:\n"
+        "- Use the conversation history ONLY if the user's current request is an explicit follow-up (e.g. 'now filter that', 'change chart to scatter', 'compare it to age').\n"
+        "- If the current question is an independent query, new plot, or topic shift, DO NOT mix in previous variables, filters, or calculations from past turns.\n\n"
+    ) if history_lines else ""
 
     prompt = (
         f"You are an expert Python data analyst and data engineer. Write safe, production-grade pandas/numpy code to execute the user's request on `df`:\n"
@@ -878,7 +895,10 @@ def explainer_node(state: AnalystState) -> Dict[str, Any]:
     if history:
         recent = [f"{m.get('role', 'user')}: {str(m.get('content', ''))[:160]}" for m in history[-3:] if m.get("content")]
         if recent:
-            context_block = "Recent conversation context:\n" + "\n".join(recent) + "\n\n"
+            context_block = (
+                "Recent conversation context (Use ONLY for follow-up reference; do NOT mix past statistics with the current result):\n"
+                + "\n".join(recent) + "\n\n"
+            )
 
     # Lean payload for fast tokenization & lowest latency
     compact_summary = {

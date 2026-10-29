@@ -54,7 +54,12 @@ class AgentOrchestrator:
 
         # Check if the user is asking to explain an existing finding or previous result
         lowered_msg = message.lower()
-        is_explain_query = any(w in lowered_msg for w in ("explain", "elaborate", "tell me more", "interpret", "what does this mean", "deep dive"))
+        is_meta_project = any(w in lowered_msg for w in (
+            "project", "argus", "who made", "who built", "creator", "author", "this tool", "platform"
+        ))
+        is_explain_query = (not is_meta_project) and any(
+            w in lowered_msg for w in ("explain", "elaborate", "tell me more", "interpret", "what does this mean", "deep dive")
+        )
         if is_explain_query and session.analysis_history:
             # Find matching analysis or use the latest one
             target_analysis = session.analysis_history[-1]

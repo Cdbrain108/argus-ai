@@ -6309,10 +6309,26 @@ select {
   height: 100%;
   max-height: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 350px;
+  grid-template-columns: minmax(0, 1fr) clamp(260px, 25vw, 350px);
   gap: 14px;
   align-items: stretch;
   overflow: hidden;
+}
+
+@media (max-width: 1100px) {
+  .analyst-workspace .chat-layout {
+    grid-template-columns: minmax(0, 1fr) clamp(240px, 28vw, 300px);
+    gap: 10px;
+  }
+}
+
+@media (max-width: 900px) {
+  .analyst-workspace .chat-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
 }
 
 .analyst-workspace .chat-panel,

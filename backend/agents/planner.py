@@ -76,7 +76,9 @@ class Planner:
                 "- data_cleaning: Cleaning, imputing, or fixing dirty data.\n"
                 "- multivariate: General unsupervised clustering (K-Means) or PCA dimensionality reduction across the dataset when no specific multi-feature plot is requested.\n"
                 "- custom: Multi-feature relationships (3+ columns), cohort comparisons, custom plots between variables, formulas, aggregations across groups, filtering, or business inquiries.\n\n"
-                f"Dataset columns: {self.column_names}\nHistory: {compact}\nQuestion: {question}\n\n"
+                f"Dataset columns: {self.column_names}\nHistory: {compact}\n"
+                "CONTEXT DISCIPLINE: If the user question is a new topic or standalone question (like project summary or a new variable plot), evaluate it independently without blending previous context. Only use history to resolve explicit follow-ups or pronouns (it, that, them).\n"
+                f"Question: {question}\n\n"
                 "Return JSON with keys 'intent' and 'confidence' only."
             )
             text = chat_completion(prompt, system_prompt="You are a strict JSON classifier.", max_tokens=120, temperature=0)
@@ -93,7 +95,21 @@ class Planner:
         q = question.lower().strip()
         matched = columns or []
 
-        # 1. Meta / Identity / Creator / Project Purpose / Greeting
+        # 1. Meta / Identity / Creator / Project Purpose / Summary of Project / Greeting
+        is_project_meta = any(w in q for w in (
+            "summary of project", "summary of the project", "summary of this project",
+            "project summary", "summarize project", "summarize the project", "summarize this project",
+            "overview of project", "overview of the project", "overview of this project",
+            "about this project", "about the project", "what is this project", "what is argus",
+            "what does this project do", "what can you do", "who made", "who created",
+            "who built", "who designed", "who developed", "creator of", "author of",
+            "maker of", "who wrote", "who are you", "what are you", "what is your name",
+            "introduce yourself", "purpose of this project", "purpose of this tool",
+            "explain this project", "explain the project", "tell me about this project", "tell me about argus"
+        ))
+        if is_project_meta:
+            return {"intent": "meta_identity", "confidence": 1.0}
+
         has_dataset_mention = any(w in q for w in ("dataset", "data", "columns", "features", "rows", "records"))
         if not has_dataset_mention and any(w in q for w in (
             "who made", "who created", "who built", "who designed", "who developed",
@@ -173,8 +189,30 @@ class Planner:
         if any(w in q for w in ("bivariate", "bi-variate", "two variable analysis", "two column analysis", "compare two columns", "relationship between")):
             return {"intent": "relationship_analysis", "confidence": 0.98}
 
-        # 5. Target variable, predictive drivers, and feature importance inquiries
-        if any(w in q for w in ("target", "target variable", "predict", "predictive", "driver", "drivers", "importance", "important feature", "key feature", "influences")):
+        # 4e. Graph / Visualizations / Comparisons involving target or specific columns
+        has_viz_kw = any(w in q for w in (
+            "graph", "plot", "chart", "scatter", "histogram", "bar chart", "line chart", "box plot",
+            "draw", "visualize", "show graph", "make a graph", "create a graph", "plot a graph",
+            "between", "btw", "vs", "versus", "against", "compare with", "compare"
+        ))
+        has_target_mention = any(w in q for w in (
+            "target", "target variable", "outcome variable", "outcome", "dependent variable", "label"
+        ))
+
+        # If user asks for a graph/plot/comparison of target with a variable, or between 2 variables:
+        if has_viz_kw:
+            if len(matched) == 2 or (len(matched) == 1 and has_target_mention):
+                return {"intent": "relationship_analysis", "confidence": 0.98}
+            if len(matched) >= 3:
+                return {"intent": "custom", "confidence": 0.95}
+
+        # 5. Target variable, predictive drivers, and feature importance inquiries (dataset-wide ranking)
+        is_feature_ranking = any(w in q for w in (
+            "importance", "important feature", "key feature", "key driver", "driver", "drivers",
+            "predictive driver", "predictive power", "feature discovery", "which features influence",
+            "most influential", "rank features", "top predictors", "impact on target", "influence target"
+        ))
+        if is_feature_ranking and (has_target_mention or any(w in q for w in ("predict", "driver", "importance"))):
             return {"intent": "feature_importance", "confidence": 0.95}
 
         # 6. Open correlation inquiries (e.g. "which columns are correlated with X")
@@ -274,19 +312,45 @@ class Planner:
                     if len(token) >= 3 and token in samples:
                         found.append(col_name)
                         break
+
+            # 4. Target variable semantic resolution:
+            # If the user says "target variable", "target", "outcome", resolve to the dataset's target variable
+            target_var = self.profile.get("target_variable")
+            if not target_var:
+                for cand in ("survived", "churn", "target", "outcome", "label", "price", "sales"):
+                    for c in self.column_names:
+                        if c.casefold() == cand:
+                            target_var = c
+                            break
+                    if target_var:
+                        break
+
+            if target_var and target_var not in found:
+                if any(phrase in lowered for phrase in ("target variable", "target col", "target", "outcome variable", "dependent variable", "label")):
+                    found.insert(0, target_var)
+
             return found
 
         # 1. Extract columns explicitly named in the current question
         matched = _extract_from(question)
 
-        # 2. History context resolution:
+        # 2. Meta/project guardrail: Under NO circumstance should meta/project queries borrow data columns from history!
+        lowered_q = question.lower()
+        is_meta_or_project = any(phrase in lowered_q for phrase in (
+            "who made", "who created", "who built", "creator", "author", "who are you",
+            "project", "argus", "what is this tool", "purpose of this project", "summary of project",
+            "project summary", "summarize project", "what can you do", "help", "hello", "hi", "hey"
+        ))
+        if is_meta_or_project:
+            return {"columns": matched, "ambiguous": [], "available_columns": self.column_names}
+
+        # 3. History context resolution:
         # DO NOT pull columns from history if:
         # - The user is asking an open question to find/list/rank columns (e.g. "which columns", "what features")
         # - The user already specified a target variable or asks an independent question.
         # ONLY borrow from history if:
         # - The question has 0 columns and uses anaphoric pronouns ("it", "its", "that column", "show distribution"),
         # - OR the question has 1 column and explicitly asks for a comparison against the prior context ("compare with", "against that").
-        lowered_q = question.lower()
         is_open_inquiry = any(
             phrase in lowered_q for phrase in (
                 "which column", "which feature", "what column", "what feature",
@@ -294,9 +358,11 @@ class Planner:
                 "top feature", "top column", "all column", "correlated with", "target variable", "target"
             )
         )
+        # Strip phrases like "this project", "that tool" before checking for anaphoric pronouns
+        clean_q = re.sub(r"\b(this|that)\s+(project|tool|app|platform|website|code|feature of argus)\b", "", lowered_q)
         has_anaphoric = any(
-            re.search(r"\b" + re.escape(w) + r"\b", lowered_q)
-            for w in ("it", "its", "that", "this", "them", "both", "the column", "that column", "the other", "previous")
+            re.search(r"\b" + re.escape(w) + r"\b", clean_q)
+            for w in ("it", "its", "that", "this", "them", "both", "the column", "that column", "the other", "previous", "same column")
         )
 
         if not is_open_inquiry and history:
